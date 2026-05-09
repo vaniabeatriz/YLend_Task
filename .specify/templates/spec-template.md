@@ -18,6 +18,8 @@
   - Tested independently
   - Deployed independently
   - Demonstrated to users independently
+
+  Keep the full feature scope small enough to explain and demo within 40 minutes.
 -->
 
 ### User Story 1 - [Brief Title] (Priority: P1)
@@ -89,11 +91,13 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-006**: System MUST provide clear setup, run, test, and demo instructions
+- **FR-007**: System MUST be testable with automated coverage at or above 80%
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-008**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
+- **FR-009**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 
@@ -104,7 +108,7 @@
 
 <!--
   ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
+  These must be measurable and include the constitution quality gates.
 -->
 
 ### Measurable Outcomes
@@ -113,6 +117,8 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-005**: Reviewer can run the application and test suite from documentation without missing setup steps
+- **SC-006**: Test command reports at least 80% statement coverage
 
 ## Assumptions
 
@@ -126,3 +132,4 @@
 - [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
 - [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
 - [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+- [Technical-test assumption, e.g., "The solution must be explainable in under 40 minutes"]

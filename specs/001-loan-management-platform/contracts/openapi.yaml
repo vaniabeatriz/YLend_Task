@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: Create Loan API
+  version: 0.1.0
+  description: API contract for the Create Loan slice.
+servers:
+  - url: http://127.0.0.1:5000
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Confirms the local application is running.
+      responses:
+        "200":
+          description: Application is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                healthy:
+                  value:
+                    status: ok
+  /loans:
+    post:
+      summary: Create a loan
+      description: Creates a temporary loan for the current application session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoanRequest"
+            examples:
+              validLoan:
+                value:
+                  loanId: LN-001
+                  borrowerName: Jane Smith
+                  fundingAmount: 1000.0
+                  repaymentAmount: 1200.0
+      responses:
+        "201":
+          description: Loan created. Response contains the stored loan record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+              examples:
+                created:
+                  value:
+                    loanId: LN-001
+                    borrowerName: Jane Smith
+                    fundingAmount: 1000.0
+                    repaymentAmount: 1200.0
+        "400":
+          description: Request body is malformed or contains invalid loan data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validation:
+                  value:
+                    error: validation_error
+                    message: Loan could not be created because one or more fields are invalid.
+                    details:
+                      - field: fundingAmount
+                        message: Funding amount must be greater than 0.
+        "409":
+          description: A current loan already uses the same case-sensitive loan ID after trimming whitespace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                duplicate:
+                  value:
+                    error: duplicate_loan_id
+                    message: A loan with this loan ID already exists.
+components:
+  schemas:
+    CreateLoanRequest:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          description: Caller-supplied loan ID. Surrounding whitespace is trimmed before validation and storage.
+          minLength: 1
+          example: LN-001
+        borrowerName:
+          type: string
+          description: Borrower name. Surrounding whitespace is trimmed before validation and storage.
+          minLength: 1
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          description: Positive monetary value greater than 0.
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          description: Positive monetary value greater than 0.
+          example: 1200.0
+    Loan:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          example: LN-001
+        borrowerName:
+          type: string
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          example: 1200.0
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: validation_error
+        message:
+          type: string
+          example: Loan could not be created because one or more fields are invalid.
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+    ErrorDetail:
+      type: object
+      required:
+        - field
+        - message
+      additionalProperties: false
+      properties:
+        field:
+          type: string
+          example: fundingAmount
+        message:
+          type: string
+          example: Funding amount must be greater than 0.
+    HealthResponse:
+      type: object
+      required:
+        - status
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+          example: ok

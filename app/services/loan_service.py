@@ -1,0 +1,85 @@
+from decimal import Decimal, InvalidOperation
+
+from app.models.loan import Loan
+
+ALLOWED_FIELDS = {"loanId", "borrowerName", "fundingAmount", "repaymentAmount"}
+
+
+class LoanValidationError(Exception):
+    def __init__(self, details):
+        super().__init__("Loan could not be created because one or more fields are invalid.")
+        self.details = details
+
+
+class DuplicateLoanError(Exception):
+    """Raised when a loan ID already exists in the current in-memory store."""
+
+
+class LoanService:
+    def __init__(self):
+        self._loans = {}
+
+    def create_loan(self, payload):
+        if not isinstance(payload, dict):
+            raise LoanValidationError([])
+
+        details = []
+        for field in sorted(set(payload) - ALLOWED_FIELDS):
+            details.append({"field": field, "message": f"{field} is not allowed."})
+
+        loan_id = self._clean_required_text(payload.get("loanId"), "loanId", details)
+        borrower_name = self._clean_required_text(
+            payload.get("borrowerName"), "borrowerName", details
+        )
+        funding_amount = self._parse_positive_decimal(
+            payload.get("fundingAmount"), "fundingAmount", details
+        )
+        repayment_amount = self._parse_positive_decimal(
+            payload.get("repaymentAmount"), "repaymentAmount", details
+        )
+
+        if details:
+            raise LoanValidationError(details)
+
+        if loan_id in self._loans:
+            raise DuplicateLoanError("A loan with this loan ID already exists.")
+
+        loan = Loan(
+            loan_id=loan_id,
+            borrower_name=borrower_name,
+            funding_amount=funding_amount,
+            repayment_amount=repayment_amount,
+        )
+        self._loans[loan.loan_id] = loan
+        return loan.to_dict()
+
+    @staticmethod
+    def _clean_required_text(value, field, details):
+        if not isinstance(value, str):
+            details.append({"field": field, "message": f"{field} is required."})
+            return None
+
+        cleaned = value.strip()
+        if not cleaned:
+            details.append({"field": field, "message": f"{field} is required."})
+            return None
+
+        return cleaned
+
+    @staticmethod
+    def _parse_positive_decimal(value, field, details):
+        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+            details.append({"field": field, "message": f"{field} must be greater than 0."})
+            return None
+
+        try:
+            amount = Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            details.append({"field": field, "message": f"{field} must be greater than 0."})
+            return None
+
+        if not amount.is_finite() or amount <= 0:
+            details.append({"field": field, "message": f"{field} must be greater than 0."})
+            return None
+
+        return amount
