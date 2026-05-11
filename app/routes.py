@@ -62,7 +62,23 @@ def create_loan():
 
 @api.get("/loans")
 def list_loans():
-    loans = current_app.config["LOAN_SERVICE"].list_loans()
+    loan_service = current_app.config["LOAN_SERVICE"]
+
+    if "borrowerName" in request.args:
+        try:
+            loans = loan_service.list_loans_by_borrower_name(
+                request.args.get("borrowerName")
+            )
+        except LoanValidationError as exc:
+            return error_response(
+                "validation_error",
+                "borrowerName is required.",
+                400,
+                exc.details,
+            )
+    else:
+        loans = loan_service.list_loans()
+
     return jsonify({"loans": loans})
 
 
