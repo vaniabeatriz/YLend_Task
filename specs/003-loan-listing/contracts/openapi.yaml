@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: Loan Listing API
+  version: 0.1.0
+  description: API contract for retrieving the current temporary loan collection.
+servers:
+  - url: http://127.0.0.1:5000
+paths:
+  /loans:
+    get:
+      summary: List current loans
+      description: Returns every loan currently stored in the active application session.
+      responses:
+        "200":
+          description: Current loan collection returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanCollection"
+              examples:
+                populated:
+                  value:
+                    loans:
+                      - loanId: LN-001
+                        borrowerName: Jane Smith
+                        fundingAmount: 1000.0
+                        repaymentAmount: 1200.0
+                      - loanId: LN-002
+                        borrowerName: Alex Doe
+                        fundingAmount: 500.0
+                        repaymentAmount: 650.0
+                empty:
+                  value:
+                    loans: []
+components:
+  schemas:
+    LoanCollection:
+      type: object
+      required:
+        - loans
+      additionalProperties: false
+      properties:
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Loan"
+    Loan:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          example: LN-001
+        borrowerName:
+          type: string
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          example: 1200.0

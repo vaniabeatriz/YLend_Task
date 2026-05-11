@@ -60,6 +60,12 @@ def create_loan():
     return response
 
 
+@api.get("/loans")
+def list_loans():
+    loans = current_app.config["LOAN_SERVICE"].list_loans()
+    return jsonify({"loans": loans})
+
+
 @api.get("/loans/<path:loan_id>")
 def get_loan(loan_id):
     try:
