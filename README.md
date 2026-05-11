@@ -1,8 +1,8 @@
 # Loan API
 
 Small Flask API slice for the YouLend technical task. This implementation
-covers creating, looking up, listing, and searching temporary loan records by
-borrower name.
+covers creating, looking up, listing, searching, and deleting temporary loan
+records.
 
 ## Scope
 
@@ -12,6 +12,7 @@ Included:
 - `GET http://127.0.0.1:5000/loans`
 - `GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>`
 - `GET http://127.0.0.1:5000/loans/<loanId>`
+- `DELETE http://127.0.0.1:5000/loans/<loanId>`
 - `GET http://127.0.0.1:5000/health`
 - In-memory loan storage for the current application session
 - pytest coverage gate at 80%
@@ -19,7 +20,6 @@ Included:
 Out of scope:
 
 - Browser UI
-- Loan deletion
 - Authentication
 - Public exposure
 - Cloud or Kubernetes deployment
@@ -89,6 +89,19 @@ Expected result: `201 Created` with the stored loan record:
   "fundingAmount": 1000.0,
   "loanId": "LN-001",
   "repaymentAmount": 1200.0
+}
+```
+
+## Demo: Duplicate Loan
+
+Run the same create request again.
+
+Expected result: `409 Conflict`:
+
+```json
+{
+  "error": "duplicate_loan_id",
+  "message": "A loan with this loan ID already exists."
 }
 ```
 
@@ -186,16 +199,47 @@ Expected result: `400 Bad Request`:
 }
 ```
 
-## Demo: Duplicate Loan
+## Demo: Delete a Loan
 
-Run the same create request again.
+```bash
+curl -i -X DELETE http://127.0.0.1:5000/loans/LN-001
+```
 
-Expected result: `409 Conflict`:
+Expected result: `200 OK` with the deleted loan record:
 
 ```json
 {
-  "error": "duplicate_loan_id",
-  "message": "A loan with this loan ID already exists."
+  "borrowerName": "Jane Smith",
+  "fundingAmount": 1000.0,
+  "loanId": "LN-001",
+  "repaymentAmount": 1200.0
+}
+```
+
+After deletion, lookup and listing workflows no longer include `LN-001`:
+
+```bash
+curl -i http://127.0.0.1:5000/loans/LN-001
+curl -i http://127.0.0.1:5000/loans
+curl -i "http://127.0.0.1:5000/loans?borrowerName=Jane%20Smith"
+```
+
+Expected results: loan ID lookup returns `404 Not Found`; full listing and
+borrower-name lookup return `200 OK` without the deleted loan.
+
+## Demo: Already Deleted or Missing Loan
+
+```bash
+curl -i -X DELETE http://127.0.0.1:5000/loans/LN-001
+curl -i -X DELETE http://127.0.0.1:5000/loans/LN-MISSING
+```
+
+Expected result for each request: `404 Not Found`:
+
+```json
+{
+  "error": "loan_not_found",
+  "message": "No loan exists for this loan ID."
 }
 ```
 
@@ -216,13 +260,15 @@ Expected result: `404 Not Found`:
 
 ## Demo: Restart Behavior
 
-Stop the Flask server with `Ctrl-C`, start it again, and list loans before
-creating another record. You can also run the borrower-name lookup request.
+Stop the Flask server with `Ctrl-C`, start it again, and list or delete loans
+before creating another record. You can also run the borrower-name lookup
+request.
 
 Expected listing result: `200 OK` with `{"loans": []}`, because loans are stored
 only in memory for the current application session. Expected borrower-name
-lookup result is also `{"loans": []}`. Running the same create request again
-returns `201 Created`.
+lookup result is also `{"loans": []}`. Deleting a loan from a previous session
+returns `404 Not Found`. Running the same create request again returns
+`201 Created`.
 
 ## Demo: Validation Error
 
@@ -260,14 +306,15 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `52 passed`, total coverage `91.98%`.
+Latest local result: `64 passed`, total coverage `91.67%`.
 
 ## Architecture
 
 - `app/routes.py`: HTTP routes, request parsing, and JSON responses.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
-  Decimal parsing, lookup, listing, borrower-name search, and in-memory storage.
+  Decimal parsing, lookup, listing, borrower-name search, deletion, and
+  in-memory storage.
 - `tests/unit/`: service-level validation and storage tests.
 - `tests/integration/`: Flask API and documentation smoke tests.
 
@@ -275,6 +322,10 @@ Latest local result: `52 passed`, total coverage `91.98%`.
 
 - Loan IDs are caller-supplied, trimmed before storage, and case-sensitive.
 - Lookup uses the same trimmed, case-sensitive loan ID rules as creation.
+- Deletion uses trimmed, case-sensitive loan ID matching and returns the deleted
+  loan record.
+- Deleted loans are removed from loan ID lookup, borrower-name lookup, and full
+  listing for the current application session.
 - Listing returns all current loans in storage order without sorting controls.
 - Borrower names are trimmed before storage.
 - Borrower-name lookup trims the search term and matches stored borrower names
