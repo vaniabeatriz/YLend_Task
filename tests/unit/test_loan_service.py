@@ -1,6 +1,11 @@
 import pytest
 
-from app.services.loan_service import DuplicateLoanError, LoanService, LoanValidationError
+from app.services.loan_service import (
+    DuplicateLoanError,
+    LoanNotFoundError,
+    LoanService,
+    LoanValidationError,
+)
 
 
 def valid_payload(**overrides):
@@ -108,3 +113,23 @@ def test_create_loan_allows_ids_that_differ_only_by_case():
 
     assert first["loanId"] == "LN-001"
     assert second["loanId"] == "ln-001"
+
+
+def test_get_loan_returns_existing_record_after_trimming_loan_id():
+    service = LoanService()
+    created = service.create_loan(valid_payload(loanId="LN-LOOKUP"))
+
+    found = service.get_loan("  LN-LOOKUP  ")
+
+    assert found == created
+
+
+@pytest.mark.parametrize("loan_id", ["LN-MISSING", "ln-001", "", "   "])
+def test_get_loan_rejects_missing_blank_or_case_mismatched_loan_id(loan_id):
+    service = LoanService()
+    service.create_loan(valid_payload(loanId="LN-001"))
+
+    with pytest.raises(LoanNotFoundError) as error:
+        service.get_loan(loan_id)
+
+    assert str(error.value) == "No loan exists for this loan ID."

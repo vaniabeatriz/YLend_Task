@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Loan Lookup API
+  version: 0.1.0
+  description: API contract for retrieving one current temporary loan by loan ID.
+servers:
+  - url: http://127.0.0.1:5000
+paths:
+  /loans/{loanId}:
+    get:
+      summary: Look up a loan
+      description: Returns one temporary loan from the current application session by trimmed, case-sensitive loan ID.
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          description: Caller-supplied loan ID. Surrounding whitespace is trimmed before lookup and matching is case-sensitive.
+          schema:
+            type: string
+            minLength: 1
+          example: LN-001
+      responses:
+        "200":
+          description: Loan found. Response contains the stored loan record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+              examples:
+                found:
+                  value:
+                    loanId: LN-001
+                    borrowerName: Jane Smith
+                    fundingAmount: 1000.0
+                    repaymentAmount: 1200.0
+        "404":
+          description: No current loan exists for the supplied case-sensitive loan ID after trimming whitespace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missing:
+                  value:
+                    error: loan_not_found
+                    message: No loan exists for this loan ID.
+components:
+  schemas:
+    Loan:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          example: LN-001
+        borrowerName:
+          type: string
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          example: 1200.0
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: loan_not_found
+        message:
+          type: string
+          example: No loan exists for this loan ID.

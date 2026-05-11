@@ -15,6 +15,10 @@ class DuplicateLoanError(Exception):
     """Raised when a loan ID already exists in the current in-memory store."""
 
 
+class LoanNotFoundError(Exception):
+    """Raised when a loan ID is absent from the current in-memory store."""
+
+
 class LoanService:
     def __init__(self):
         self._loans = {}
@@ -52,6 +56,16 @@ class LoanService:
         )
         self._loans[loan.loan_id] = loan
         return loan.to_dict()
+
+    def get_loan(self, loan_id):
+        if not isinstance(loan_id, str):
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        normalized_loan_id = loan_id.strip()
+        if not normalized_loan_id or normalized_loan_id not in self._loans:
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        return self._loans[normalized_loan_id].to_dict()
 
     @staticmethod
     def _clean_required_text(value, field, details):
