@@ -1,6 +1,10 @@
 from flask import Blueprint, current_app, jsonify, request
 
-from app.services.loan_service import DuplicateLoanError, LoanValidationError
+from app.services.loan_service import (
+    DuplicateLoanError,
+    LoanNotFoundError,
+    LoanValidationError,
+)
 
 api = Blueprint("api", __name__)
 
@@ -54,6 +58,20 @@ def create_loan():
     response = jsonify(loan)
     response.status_code = 201
     return response
+
+
+@api.get("/loans/<path:loan_id>")
+def get_loan(loan_id):
+    try:
+        loan = current_app.config["LOAN_SERVICE"].get_loan(loan_id)
+    except LoanNotFoundError as exc:
+        return error_response(
+            "loan_not_found",
+            str(exc),
+            404,
+        )
+
+    return jsonify(loan)
 
 
 @api.get("/health")

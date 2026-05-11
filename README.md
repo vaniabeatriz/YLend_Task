@@ -1,13 +1,14 @@
-# Create Loan API
+# Loan API
 
-Small Flask API slice for the YouLend technical task. This implementation only
-covers the first requirement: creating a temporary loan record.
+Small Flask API slice for the YouLend technical task. This implementation
+covers creating and looking up temporary loan records.
 
 ## Scope
 
 Included:
 
 - `POST http://127.0.0.1:5000/loans`
+- `GET http://127.0.0.1:5000/loans/<loanId>`
 - `GET http://127.0.0.1:5000/health`
 - In-memory loan storage for the current application session
 - pytest coverage gate at 80%
@@ -15,7 +16,7 @@ Included:
 Out of scope:
 
 - Browser UI
-- Loan lookup, listing, or deletion
+- Loan listing or deletion
 - Authentication
 - Public exposure
 - Cloud or Kubernetes deployment
@@ -74,6 +75,23 @@ Expected result: `201 Created` with the stored loan record:
 }
 ```
 
+## Demo: Look Up a Loan
+
+```bash
+curl -i http://127.0.0.1:5000/loans/LN-001
+```
+
+Expected result: `200 OK` with the stored loan record:
+
+```json
+{
+  "borrowerName": "Jane Smith",
+  "fundingAmount": 1000.0,
+  "loanId": "LN-001",
+  "repaymentAmount": 1200.0
+}
+```
+
 ## Demo: Duplicate Loan
 
 Run the same create request again.
@@ -84,6 +102,21 @@ Expected result: `409 Conflict`:
 {
   "error": "duplicate_loan_id",
   "message": "A loan with this loan ID already exists."
+}
+```
+
+## Demo: Missing Loan Lookup
+
+```bash
+curl -i http://127.0.0.1:5000/loans/LN-MISSING
+```
+
+Expected result: `404 Not Found`:
+
+```json
+{
+  "error": "loan_not_found",
+  "message": "No loan exists for this loan ID."
 }
 ```
 
@@ -131,20 +164,21 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `27 passed`, total coverage `91%`.
+Latest local result: `36 passed`, total coverage `91%`.
 
 ## Architecture
 
 - `app/routes.py`: HTTP routes, request parsing, and JSON responses.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
-  Decimal parsing, and in-memory storage.
+  Decimal parsing, lookup, and in-memory storage.
 - `tests/unit/`: service-level validation and storage tests.
 - `tests/integration/`: Flask API and documentation smoke tests.
 
 ## Trade-Offs and Assumptions
 
 - Loan IDs are caller-supplied, trimmed before storage, and case-sensitive.
+- Lookup uses the same trimmed, case-sensitive loan ID rules as creation.
 - Borrower names are trimmed before storage.
 - Funding and repayment amounts must be valid monetary values greater than 0.
 - Amounts are parsed with `Decimal` internally and returned as JSON numbers.
