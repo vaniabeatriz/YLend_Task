@@ -67,6 +67,9 @@ class LoanService:
 
         return self._loans[normalized_loan_id].to_dict()
 
+    def list_loans(self):
+        return [loan.to_dict() for loan in self._loans.values()]
+
     @staticmethod
     def _clean_required_text(value, field, details):
         if not isinstance(value, str):

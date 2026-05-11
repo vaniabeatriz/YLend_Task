@@ -1,13 +1,14 @@
 # Loan API
 
 Small Flask API slice for the YouLend technical task. This implementation
-covers creating and looking up temporary loan records.
+covers creating, looking up, and listing temporary loan records.
 
 ## Scope
 
 Included:
 
 - `POST http://127.0.0.1:5000/loans`
+- `GET http://127.0.0.1:5000/loans`
 - `GET http://127.0.0.1:5000/loans/<loanId>`
 - `GET http://127.0.0.1:5000/health`
 - In-memory loan storage for the current application session
@@ -16,7 +17,7 @@ Included:
 Out of scope:
 
 - Browser UI
-- Loan listing or deletion
+- Loan deletion
 - Authentication
 - Public exposure
 - Cloud or Kubernetes deployment
@@ -48,6 +49,20 @@ Expected response:
 ```json
 {
   "status": "ok"
+}
+```
+
+## Demo: Empty Loan List
+
+```bash
+curl -i http://127.0.0.1:5000/loans
+```
+
+Expected result: `200 OK` with an empty collection when no loans exist:
+
+```json
+{
+  "loans": []
 }
 ```
 
@@ -92,6 +107,27 @@ Expected result: `200 OK` with the stored loan record:
 }
 ```
 
+## Demo: List Current Loans
+
+```bash
+curl -i http://127.0.0.1:5000/loans
+```
+
+Expected result: `200 OK` with the current in-memory loan collection:
+
+```json
+{
+  "loans": [
+    {
+      "borrowerName": "Jane Smith",
+      "fundingAmount": 1000.0,
+      "loanId": "LN-001",
+      "repaymentAmount": 1200.0
+    }
+  ]
+}
+```
+
 ## Demo: Duplicate Loan
 
 Run the same create request again.
@@ -122,11 +158,12 @@ Expected result: `404 Not Found`:
 
 ## Demo: Restart Behavior
 
-Stop the Flask server with `Ctrl-C`, start it again, and run the same create
-request once more.
+Stop the Flask server with `Ctrl-C`, start it again, and list loans before
+creating another record.
 
-Expected result: `201 Created`, because loans are stored only in memory for the
-current application session.
+Expected listing result: `200 OK` with `{"loans": []}`, because loans are stored
+only in memory for the current application session. Running the same create
+request again returns `201 Created`.
 
 ## Demo: Validation Error
 
@@ -164,14 +201,14 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `36 passed`, total coverage `91%`.
+Latest local result: `42 passed`, total coverage `91%`.
 
 ## Architecture
 
 - `app/routes.py`: HTTP routes, request parsing, and JSON responses.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
-  Decimal parsing, lookup, and in-memory storage.
+  Decimal parsing, lookup, listing, and in-memory storage.
 - `tests/unit/`: service-level validation and storage tests.
 - `tests/integration/`: Flask API and documentation smoke tests.
 
@@ -179,6 +216,7 @@ Latest local result: `36 passed`, total coverage `91%`.
 
 - Loan IDs are caller-supplied, trimmed before storage, and case-sensitive.
 - Lookup uses the same trimmed, case-sensitive loan ID rules as creation.
+- Listing returns all current loans in storage order without sorting controls.
 - Borrower names are trimmed before storage.
 - Funding and repayment amounts must be valid monetary values greater than 0.
 - Amounts are parsed with `Decimal` internally and returned as JSON numbers.

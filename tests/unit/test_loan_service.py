@@ -133,3 +133,26 @@ def test_get_loan_rejects_missing_blank_or_case_mismatched_loan_id(loan_id):
         service.get_loan(loan_id)
 
     assert str(error.value) == "No loan exists for this loan ID."
+
+
+def test_list_loans_returns_all_current_loans_with_trimmed_values_and_case_sensitive_ids():
+    service = LoanService()
+    first = service.create_loan(
+        valid_payload(loanId="  LN-001  ", borrowerName="  Jane Smith  ")
+    )
+    second = service.create_loan(
+        valid_payload(
+            loanId="ln-001",
+            borrowerName="  Alex Doe  ",
+            fundingAmount=500.0,
+            repaymentAmount=650.0,
+        )
+    )
+
+    assert service.list_loans() == [first, second]
+
+
+def test_list_loans_returns_empty_list_for_new_service():
+    service = LoanService()
+
+    assert service.list_loans() == []
