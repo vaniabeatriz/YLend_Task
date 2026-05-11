@@ -96,6 +96,20 @@ def get_loan(loan_id):
     return jsonify(loan)
 
 
+@api.delete("/loans/<path:loan_id>")
+def delete_loan(loan_id):
+    try:
+        loan = current_app.config["LOAN_SERVICE"].delete_loan(loan_id)
+    except LoanNotFoundError as exc:
+        return error_response(
+            "loan_not_found",
+            str(exc),
+            404,
+        )
+
+    return jsonify(loan)
+
+
 @api.get("/health")
 def health():
     return jsonify({"status": "ok"})

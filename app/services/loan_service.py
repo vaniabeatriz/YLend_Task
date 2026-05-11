@@ -67,6 +67,16 @@ class LoanService:
 
         return self._loans[normalized_loan_id].to_dict()
 
+    def delete_loan(self, loan_id):
+        if not isinstance(loan_id, str):
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        normalized_loan_id = loan_id.strip()
+        if not normalized_loan_id or normalized_loan_id not in self._loans:
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        return self._loans.pop(normalized_loan_id).to_dict()
+
     def list_loans(self):
         return [loan.to_dict() for loan in self._loans.values()]
 
