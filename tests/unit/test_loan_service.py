@@ -156,3 +156,53 @@ def test_list_loans_returns_empty_list_for_new_service():
     service = LoanService()
 
     assert service.list_loans() == []
+
+
+def test_list_loans_by_borrower_name_returns_matching_loans_with_trimmed_search_and_case_sensitive_matching():
+    service = LoanService()
+    first = service.create_loan(valid_payload(loanId="LN-001"))
+    service.create_loan(
+        valid_payload(
+            loanId="LN-002",
+            borrowerName="Alex Doe",
+            fundingAmount=500.0,
+            repaymentAmount=650.0,
+        )
+    )
+    second = service.create_loan(
+        valid_payload(
+            loanId="LN-003",
+            borrowerName="Jane Smith",
+            fundingAmount=700.0,
+            repaymentAmount=850.0,
+        )
+    )
+    service.create_loan(
+        valid_payload(
+            loanId="LN-004",
+            borrowerName="jane smith",
+            fundingAmount=300.0,
+            repaymentAmount=360.0,
+        )
+    )
+
+    assert service.list_loans_by_borrower_name("  Jane Smith  ") == [first, second]
+
+
+def test_list_loans_by_borrower_name_returns_empty_list_when_no_matches():
+    service = LoanService()
+    service.create_loan(valid_payload(loanId="LN-001"))
+
+    assert service.list_loans_by_borrower_name("No Match") == []
+
+
+@pytest.mark.parametrize("borrower_name", ["", "   "])
+def test_list_loans_by_borrower_name_rejects_blank_search_terms(borrower_name):
+    service = LoanService()
+
+    with pytest.raises(LoanValidationError) as error:
+        service.list_loans_by_borrower_name(borrower_name)
+
+    assert error.value.details == [
+        {"field": "borrowerName", "message": "borrowerName is required."}
+    ]

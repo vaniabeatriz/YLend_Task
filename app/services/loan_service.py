@@ -70,6 +70,21 @@ class LoanService:
     def list_loans(self):
         return [loan.to_dict() for loan in self._loans.values()]
 
+    def list_loans_by_borrower_name(self, borrower_name):
+        details = []
+        normalized_borrower_name = self._clean_required_text(
+            borrower_name, "borrowerName", details
+        )
+
+        if details:
+            raise LoanValidationError(details)
+
+        return [
+            loan.to_dict()
+            for loan in self._loans.values()
+            if loan.borrower_name == normalized_borrower_name
+        ]
+
     @staticmethod
     def _clean_required_text(value, field, details):
         if not isinstance(value, str):
