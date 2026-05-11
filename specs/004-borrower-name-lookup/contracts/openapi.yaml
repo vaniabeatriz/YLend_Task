@@ -1,0 +1,126 @@
+openapi: 3.0.3
+info:
+  title: Borrower Name Loan Lookup API
+  version: 0.1.0
+  description: API contract for retrieving current temporary loans by borrower name.
+servers:
+  - url: http://127.0.0.1:5000
+paths:
+  /loans:
+    get:
+      summary: List current loans or search current loans by borrower name
+      description: >
+        Returns every current loan when no borrowerName query parameter is
+        supplied. Returns only current loans whose borrowerName exactly matches
+        the supplied trimmed borrowerName query parameter when it is supplied.
+      parameters:
+        - name: borrowerName
+          in: query
+          required: false
+          description: Optional borrower name to search for. When present, it must not be blank after trimming.
+          schema:
+            type: string
+          examples:
+            jane:
+              value: Jane Smith
+            whitespaceTrimmed:
+              value: "  Jane Smith  "
+      responses:
+        "200":
+          description: Loan collection returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanCollection"
+              examples:
+                borrowerMatches:
+                  value:
+                    loans:
+                      - loanId: LN-001
+                        borrowerName: Jane Smith
+                        fundingAmount: 1000.0
+                        repaymentAmount: 1200.0
+                      - loanId: LN-003
+                        borrowerName: Jane Smith
+                        fundingAmount: 700.0
+                        repaymentAmount: 850.0
+                noBorrowerMatches:
+                  value:
+                    loans: []
+        "400":
+          description: Borrower-name search term is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              examples:
+                blankBorrowerName:
+                  value:
+                    error: validation_error
+                    message: borrowerName is required.
+                    details:
+                      - field: borrowerName
+                        message: borrowerName is required.
+components:
+  schemas:
+    LoanCollection:
+      type: object
+      required:
+        - loans
+      additionalProperties: false
+      properties:
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Loan"
+    Loan:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          example: LN-001
+        borrowerName:
+          type: string
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          example: 1200.0
+    ValidationError:
+      type: object
+      required:
+        - error
+        - message
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: validation_error
+        message:
+          type: string
+          example: borrowerName is required.
+        details:
+          type: array
+          items:
+            type: object
+            required:
+              - field
+              - message
+            additionalProperties: false
+            properties:
+              field:
+                type: string
+                example: borrowerName
+              message:
+                type: string
+                example: borrowerName is required.

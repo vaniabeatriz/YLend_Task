@@ -1,7 +1,8 @@
 # Loan API
 
 Small Flask API slice for the YouLend technical task. This implementation
-covers creating, looking up, and listing temporary loan records.
+covers creating, looking up, listing, and searching temporary loan records by
+borrower name.
 
 ## Scope
 
@@ -9,6 +10,7 @@ Included:
 
 - `POST http://127.0.0.1:5000/loans`
 - `GET http://127.0.0.1:5000/loans`
+- `GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>`
 - `GET http://127.0.0.1:5000/loans/<loanId>`
 - `GET http://127.0.0.1:5000/health`
 - In-memory loan storage for the current application session
@@ -128,6 +130,62 @@ Expected result: `200 OK` with the current in-memory loan collection:
 }
 ```
 
+## Demo: Look Up Loans By Borrower Name
+
+```bash
+curl -i "http://127.0.0.1:5000/loans?borrowerName=Jane%20Smith"
+```
+
+Expected result: `200 OK` with current loans for that borrower:
+
+```json
+{
+  "loans": [
+    {
+      "borrowerName": "Jane Smith",
+      "fundingAmount": 1000.0,
+      "loanId": "LN-001",
+      "repaymentAmount": 1200.0
+    }
+  ]
+}
+```
+
+## Demo: No Borrower Matches
+
+```bash
+curl -i "http://127.0.0.1:5000/loans?borrowerName=No%20Match"
+```
+
+Expected result: `200 OK` with an empty collection:
+
+```json
+{
+  "loans": []
+}
+```
+
+## Demo: Blank Borrower Name Lookup
+
+```bash
+curl -i "http://127.0.0.1:5000/loans?borrowerName="
+```
+
+Expected result: `400 Bad Request`:
+
+```json
+{
+  "details": [
+    {
+      "field": "borrowerName",
+      "message": "borrowerName is required."
+    }
+  ],
+  "error": "validation_error",
+  "message": "borrowerName is required."
+}
+```
+
 ## Demo: Duplicate Loan
 
 Run the same create request again.
@@ -159,11 +217,12 @@ Expected result: `404 Not Found`:
 ## Demo: Restart Behavior
 
 Stop the Flask server with `Ctrl-C`, start it again, and list loans before
-creating another record.
+creating another record. You can also run the borrower-name lookup request.
 
 Expected listing result: `200 OK` with `{"loans": []}`, because loans are stored
-only in memory for the current application session. Running the same create
-request again returns `201 Created`.
+only in memory for the current application session. Expected borrower-name
+lookup result is also `{"loans": []}`. Running the same create request again
+returns `201 Created`.
 
 ## Demo: Validation Error
 
@@ -201,14 +260,14 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `42 passed`, total coverage `91%`.
+Latest local result: `52 passed`, total coverage `91.98%`.
 
 ## Architecture
 
 - `app/routes.py`: HTTP routes, request parsing, and JSON responses.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
-  Decimal parsing, lookup, listing, and in-memory storage.
+  Decimal parsing, lookup, listing, borrower-name search, and in-memory storage.
 - `tests/unit/`: service-level validation and storage tests.
 - `tests/integration/`: Flask API and documentation smoke tests.
 
@@ -218,6 +277,10 @@ Latest local result: `42 passed`, total coverage `91%`.
 - Lookup uses the same trimmed, case-sensitive loan ID rules as creation.
 - Listing returns all current loans in storage order without sorting controls.
 - Borrower names are trimmed before storage.
+- Borrower-name lookup trims the search term and matches stored borrower names
+  exactly and case-sensitively.
+- A missing `borrowerName` query lists all current loans; a blank `borrowerName`
+  query is rejected as validation error.
 - Funding and repayment amounts must be valid monetary values greater than 0.
 - Amounts are parsed with `Decimal` internally and returned as JSON numbers.
 - Storage is process-local and disappears when the application restarts.
