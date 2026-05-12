@@ -198,6 +198,8 @@ def test_loan_website_js_contains_service_unavailable_loading_and_retry_hooks():
     assert "authentication_required" in script
     assert "invalid_token" in script
     assert "auth_configuration_error" in script
+    assert "loan_storage_unavailable" in script
+    assert "Loan storage is unavailable." in script
     assert "Sign in to use loan workflows." in script
 
 

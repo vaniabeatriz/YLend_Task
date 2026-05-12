@@ -8,6 +8,7 @@ from app.auth import (
     require_auth,
     start_login,
 )
+from app.repositories.loan_repository import LoanStorageError
 from app.services.loan_service import (
     DuplicateLoanError,
     LoanNotFoundError,
@@ -61,6 +62,14 @@ def error_response(error, message, status_code, details=None):
     return response
 
 
+def storage_error_response():
+    return error_response(
+        "loan_storage_unavailable",
+        "Loan storage is unavailable. Check local persistence setup and retry.",
+        503,
+    )
+
+
 @api.post("/loans")
 @require_auth
 def create_loan():
@@ -94,6 +103,8 @@ def create_loan():
             str(exc),
             409,
         )
+    except LoanStorageError:
+        return storage_error_response()
 
     response = jsonify(loan)
     response.status_code = 201
@@ -117,8 +128,13 @@ def list_loans():
                 400,
                 exc.details,
             )
+        except LoanStorageError:
+            return storage_error_response()
     else:
-        loans = loan_service.list_loans()
+        try:
+            loans = loan_service.list_loans()
+        except LoanStorageError:
+            return storage_error_response()
 
     return jsonify({"loans": loans})
 
@@ -134,6 +150,8 @@ def get_loan(loan_id):
             str(exc),
             404,
         )
+    except LoanStorageError:
+        return storage_error_response()
 
     return jsonify(loan)
 
@@ -149,6 +167,8 @@ def delete_loan(loan_id):
             str(exc),
             404,
         )
+    except LoanStorageError:
+        return storage_error_response()
 
     return jsonify(loan)
 

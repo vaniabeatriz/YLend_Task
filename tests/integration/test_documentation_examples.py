@@ -16,6 +16,11 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "AUTH0_AUDIENCE" in readme
     assert "APP_SECRET_KEY" in readme
     assert ".env` files are ignored by `.gitignore`" in readme
+    assert "Persistence Configuration" in readme
+    assert "LOAN_DATABASE_PATH" in readme
+    assert "instance/loans.sqlite3" in readme
+    assert "SQLite" in readme
+    assert "survive Flask app" in readme
     assert "curl http://127.0.0.1:5000/health" in readme
     assert "GET http://127.0.0.1:5000/" in readme
     assert "GET http://127.0.0.1:5000/login" in readme
@@ -39,6 +44,7 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "within 2 seconds" in readme
     assert "service-unavailable feedback" in readme
     assert "app/auth.py" in readme
+    assert "app/repositories/loan_repository.py" in readme
     assert "app/templates/index.html" in readme
     assert "app/static/loan_website.css" in readme
     assert "app/static/loan_website.js" in readme
@@ -54,8 +60,12 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "409 Conflict" in readme
     assert "400 Bad Request" in readme
     assert "Restart Behavior" in readme
+    assert "same `LOAN_DATABASE_PATH`" in readme
+    assert "remains absent after" in readme
     assert "201 Created" in readme
     assert "Auth0 or authentication" not in readme
+    assert "process-local" not in readme
+    assert "resets when the application starts again" not in readme
 
 
 def test_loan_website_quickstart_documents_browser_demo_and_validation():

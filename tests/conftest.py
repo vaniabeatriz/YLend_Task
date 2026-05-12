@@ -18,8 +18,29 @@ def valid_test_token_verifier(token):
 
 
 @pytest.fixture
-def app():
-    return create_app({"TESTING": True})
+def database_path(tmp_path):
+    return tmp_path / "loans.sqlite3"
+
+
+def protected_app_config(database_path, **overrides):
+    config = {
+        "TESTING": True,
+        "LOAN_DATABASE_PATH": str(database_path),
+        "AUTH_DISABLE_FOR_TESTS": False,
+        "AUTH0_DOMAIN": "test-tenant.auth0.com",
+        "AUTH0_CLIENT_ID": "test-client-id",
+        "AUTH0_CLIENT_SECRET": "test-client-secret",
+        "AUTH0_AUDIENCE": "https://loan-api.test",
+        "AUTH0_CALLBACK_URL": "http://127.0.0.1:5000/callback",
+        "AUTH_TOKEN_VERIFIER": valid_test_token_verifier,
+    }
+    config.update(overrides)
+    return config
+
+
+@pytest.fixture
+def app(database_path):
+    return create_app({"TESTING": True, "LOAN_DATABASE_PATH": str(database_path)})
 
 
 @pytest.fixture
@@ -33,19 +54,16 @@ def auth_headers():
 
 
 @pytest.fixture
-def protected_app():
-    return create_app(
-        {
-            "TESTING": True,
-            "AUTH_DISABLE_FOR_TESTS": False,
-            "AUTH0_DOMAIN": "test-tenant.auth0.com",
-            "AUTH0_CLIENT_ID": "test-client-id",
-            "AUTH0_CLIENT_SECRET": "test-client-secret",
-            "AUTH0_AUDIENCE": "https://loan-api.test",
-            "AUTH0_CALLBACK_URL": "http://127.0.0.1:5000/callback",
-            "AUTH_TOKEN_VERIFIER": valid_test_token_verifier,
-        }
-    )
+def make_protected_app(database_path):
+    def _make(**overrides):
+        return create_app(protected_app_config(database_path, **overrides))
+
+    return _make
+
+
+@pytest.fixture
+def protected_app(make_protected_app):
+    return make_protected_app()
 
 
 @pytest.fixture

@@ -178,22 +178,20 @@ def test_delete_already_deleted_loan_returns_not_found_and_preserves_remaining_l
     }
 
 
-def test_delete_loan_returns_not_found_after_new_app_session():
-    first_client = create_app({"TESTING": True}).test_client()
-    restarted_client = create_app({"TESTING": True}).test_client()
+def test_delete_loan_can_remove_persisted_record_after_new_app_session(tmp_path):
+    config = {"TESTING": True, "LOAN_DATABASE_PATH": str(tmp_path / "loans.sqlite3")}
+    first_client = create_app(config).test_client()
 
     created = first_client.post("/loans", json=valid_payload(loanId="LN-RESTART"))
     found_before_restart = first_client.get("/loans/LN-RESTART")
 
+    restarted_client = create_app(config).test_client()
     started_at = perf_counter()
     deleted_after_restart = restarted_client.delete("/loans/LN-RESTART")
     elapsed = perf_counter() - started_at
 
     assert created.status_code == 201
     assert found_before_restart.status_code == 200
-    assert deleted_after_restart.status_code == 404
+    assert deleted_after_restart.status_code == 200
     assert elapsed < 2
-    assert deleted_after_restart.get_json() == {
-        "error": "loan_not_found",
-        "message": "No loan exists for this loan ID.",
-    }
+    assert deleted_after_restart.get_json()["loanId"] == "LN-RESTART"
