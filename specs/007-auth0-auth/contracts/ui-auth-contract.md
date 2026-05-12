@@ -96,7 +96,7 @@ Setup-error response:
   "authenticated": false,
   "user": null,
   "accessToken": null,
-  "setupError": "Please sign in or register to continue."
+  "setupError": "Please sign in or create an account to continue."
 }
 ```
 

@@ -112,7 +112,7 @@ def _truthy(value):
 
 def _setup_message(missing):
     if missing:
-        return "Please sign in or register to continue."
+        return "Please sign in or create an account to continue."
     return "Auth0 authentication is not configured."
 
 

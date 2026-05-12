@@ -45,7 +45,7 @@ def test_auth_status_reports_signed_out_and_setup_error(app):
 
     assert status["authenticated"] is False
     assert status["accessToken"] is None
-    assert status["setupError"] == "Please sign in or register to continue."
+    assert status["setupError"] == "Please sign in or create an account to continue."
 
 
 def test_authenticated_session_expires_and_clears_session(app):
@@ -122,7 +122,7 @@ def test_verify_access_token_reports_missing_api_configuration():
 
     assert exc.value.error == "auth_configuration_error"
     assert exc.value.status_code == 503
-    assert exc.value.message == "Please sign in or register to continue."
+    assert exc.value.message == "Please sign in or create an account to continue."
 
 
 def test_verify_access_token_surfaces_jwks_lookup_failures():
