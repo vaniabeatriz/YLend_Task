@@ -76,6 +76,23 @@ body {
   font-size: 1rem;
 }
 
+.auth-panel {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.auth-status {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .endpoint-menu {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -19,6 +19,11 @@ def test_website_home_renders_create_and_current_list_shell(client):
     assert 'id="home-section"' in body
     assert 'id="home-heading"' in body
     assert "Create, find, review, and delete loan." in body
+    assert 'id="auth-status"' in body
+    assert 'id="login-link"' in body
+    assert 'href="/login"' in body
+    assert 'id="logout-link"' in body
+    assert 'href="/logout"' in body
     assert "bootstrap" in body.lower()
     assert 'href="/static/loan_website.css"' in body
     assert 'src="/static/loan_website.js"' in body
@@ -40,6 +45,7 @@ def test_website_home_renders_endpoint_menu(client):
     assert response.status_code == 200
     assert 'class="endpoint-menu"' in body
     assert 'aria-label="Loan workflow actions"' in body
+    assert "data-auth-required" in body
     assert 'data-section-target="create-section"' in body
     assert 'data-section-target="current-loans-section"' in body
     assert 'data-section-target="borrower-search-section"' in body
@@ -90,12 +96,22 @@ def test_loan_website_js_contains_create_list_and_failure_preservation_hooks():
     assert "showWorkflowSection" in script
     assert "data-section-target" in script
     assert "data-workflow-section" in script
+    assert "loadAuthStatus" in script
+    assert "applyAuthState" in script
+    assert "Authorization" in script
+    assert "Bearer" in script
     assert 'sectionId === "current-loans-section"' in script
-    assert (
-        'document.addEventListener("DOMContentLoaded", () => {\n'
-        "  bindWebsiteEvents();\n"
-        "});"
-    ) in script
+    assert 'document.addEventListener("DOMContentLoaded", () => {' in script
+    assert "bindWebsiteEvents();" in script
+    assert "loadAuthStatus();" in script
+
+
+def test_website_home_can_render_initial_auth_setup_error(client):
+    response = client.get("/login")
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 503
+    assert "Missing Auth0 configuration" in body
 
 
 def test_website_home_renders_search_and_lookup_regions(client):
@@ -179,6 +195,10 @@ def test_loan_website_js_contains_service_unavailable_loading_and_retry_hooks():
     assert "localFeedbackTargetMs" in script
     assert "2000" in script
     assert "restoreCreateFormValues" in script
+    assert "authentication_required" in script
+    assert "invalid_token" in script
+    assert "auth_configuration_error" in script
+    assert "Sign in to use loan workflows." in script
 
 
 def test_loan_website_css_contains_responsive_and_no_overflow_safeguards():

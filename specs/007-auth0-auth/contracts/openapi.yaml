@@ -1,0 +1,234 @@
+openapi: 3.0.3
+info:
+  title: Authenticated Loan API
+  version: 0.1.0
+  description: >
+    Loan API contract after adding Auth0 bearer-token protection. Health checks
+    remain public. Loan operations require a valid Auth0 access token in the
+    Authorization header.
+servers:
+  - url: http://127.0.0.1:5000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Auth0 JWT access token for the configured API audience.
+  schemas:
+    Loan:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          example: LN-001
+        borrowerName:
+          type: string
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          example: 1200.0
+    LoanCollection:
+      type: object
+      required:
+        - loans
+      additionalProperties: false
+      properties:
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Loan"
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: authentication_required
+        message:
+          type: string
+          example: A valid Auth0 access token is required.
+        details:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+  responses:
+    AuthenticationRequired:
+      description: Missing, malformed, expired, wrong-audience, or invalid Auth0 access token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            missingToken:
+              value:
+                error: authentication_required
+                message: A valid Auth0 access token is required.
+            invalidToken:
+              value:
+                error: invalid_token
+                message: The Auth0 access token is invalid or expired.
+    AuthConfigurationError:
+      description: Auth0 configuration is missing or unavailable in local setup.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: auth_configuration_error
+            message: "Missing Auth0 configuration: AUTH0_DOMAIN, AUTH0_AUDIENCE."
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Public operational health check; authentication is not required.
+      responses:
+        "200":
+          description: Service is available.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /loans:
+    post:
+      summary: Create a loan
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Loan"
+            examples:
+              createLoan:
+                value:
+                  loanId: LN-001
+                  borrowerName: Jane Smith
+                  fundingAmount: 1000.0
+                  repaymentAmount: 1200.0
+      responses:
+        "201":
+          description: Loan created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "400":
+          description: Validation error after authentication succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "503":
+          $ref: "#/components/responses/AuthConfigurationError"
+        "409":
+          description: Duplicate loan ID after authentication succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: List loans or search by borrower name
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: borrowerName
+          in: query
+          required: false
+          description: Optional borrower-name exact search using existing normalization rules.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Loan collection returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanCollection"
+        "400":
+          description: Blank borrowerName validation error after authentication succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "503":
+          $ref: "#/components/responses/AuthConfigurationError"
+  /loans/{loanId}:
+    parameters:
+      - name: loanId
+        in: path
+        required: true
+        description: Loan ID. Surrounding whitespace follows existing service normalization rules.
+        schema:
+          type: string
+        examples:
+          standard:
+            value: LN-001
+    get:
+      summary: Look up a loan by loan ID
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Loan found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "503":
+          $ref: "#/components/responses/AuthConfigurationError"
+        "404":
+          description: Loan not found after authentication succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a loan by loan ID
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Loan deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "503":
+          $ref: "#/components/responses/AuthConfigurationError"
+        "404":
+          description: Loan not found after authentication succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
