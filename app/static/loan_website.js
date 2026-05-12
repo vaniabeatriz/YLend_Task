@@ -9,6 +9,8 @@ const feedbackClasses = {
   empty: "alert-info",
   loading: "alert-info",
   "service-unavailable": "alert-danger",
+  authentication: "alert-warning",
+  setup: "alert-danger",
 };
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
@@ -18,6 +20,12 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
 
 const state = {
   activeAction: null,
+  auth: {
+    authenticated: false,
+    user: null,
+    accessToken: null,
+    setupError: null,
+  },
 };
 
 function getElement(id) {
@@ -107,9 +115,19 @@ async function parseResponse(response) {
 
 async function requestJson(path, options = {}) {
   let response;
+  const requestOptions = { ...options };
+  const headers = { ...(options.headers || {}) };
+
+  if (path.startsWith(loanApiPath) && state.auth.accessToken) {
+    headers.Authorization = `Bearer ${state.auth.accessToken}`;
+  }
+
+  if (Object.keys(headers).length) {
+    requestOptions.headers = headers;
+  }
 
   try {
-    response = await fetch(path, options);
+    response = await fetch(path, requestOptions);
   } catch (error) {
     const serviceError = new Error("The loan service is unavailable. Check the running Flask app and retry.");
     serviceError.kind = "service-unavailable";
@@ -162,11 +180,122 @@ function errorFeedback(error, fallbackMessage) {
     };
   }
 
+  if (
+    error.kind === "authentication_required" ||
+    error.kind === "invalid_token"
+  ) {
+    return {
+      type: "authentication",
+      message: error.payload.message || "Sign in again to continue.",
+      details: [],
+    };
+  }
+
+  if (error.kind === "auth_configuration_error") {
+    return {
+      type: "setup",
+      message: error.payload.message || "Auth0 setup is incomplete.",
+      details: error.payload.details || [],
+    };
+  }
+
   return {
     type: "service-unavailable",
     message: fallbackMessage,
     details: [],
   };
+}
+
+function signedInLabel(user) {
+  if (!user) {
+    return "Signed in.";
+  }
+
+  return `Signed in as ${user.name || user.email || "authenticated user"}.`;
+}
+
+function resetWorkflowSections() {
+  document
+    .querySelectorAll("[data-workflow-section]")
+    .forEach((section) => {
+      section.hidden = true;
+    });
+
+  document
+    .querySelectorAll("[data-section-target]")
+    .forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+}
+
+function applyAuthState(authState) {
+  state.auth = {
+    authenticated: Boolean(authState.authenticated),
+    user: authState.user || null,
+    accessToken: authState.accessToken || null,
+    setupError: authState.setupError || null,
+  };
+
+  document.body.dataset.authenticated = String(state.auth.authenticated);
+
+  document
+    .querySelectorAll("[data-auth-required]")
+    .forEach((element) => {
+      element.hidden = !state.auth.authenticated;
+    });
+
+  document
+    .querySelectorAll("[data-auth-signed-out]")
+    .forEach((element) => {
+      element.hidden = state.auth.authenticated;
+    });
+
+  document
+    .querySelectorAll("[data-auth-signed-in]")
+    .forEach((element) => {
+      element.hidden = !state.auth.authenticated;
+    });
+
+  const status = getElement("auth-status");
+  if (status) {
+    if (state.auth.authenticated) {
+      status.textContent = signedInLabel(state.auth.user);
+    } else if (state.auth.setupError) {
+      status.textContent = state.auth.setupError;
+    } else {
+      status.textContent = "Sign in to use loan workflows.";
+    }
+  }
+
+  if (!state.auth.authenticated) {
+    resetWorkflowSections();
+  }
+}
+
+async function loadAuthStatus() {
+  try {
+    const authState = await requestJson("/auth/status", { method: "GET" });
+    applyAuthState(authState);
+    if (!authState.authenticated && authState.setupError) {
+      showFeedback("setup", authState.setupError);
+    }
+  } catch (error) {
+    applyAuthState({ authenticated: false });
+    showFeedback("service-unavailable", "Authentication status could not be loaded.");
+  }
+}
+
+function requireSignedIn() {
+  if (state.auth.authenticated) {
+    return true;
+  }
+
+  showFeedback(
+    state.auth.setupError ? "setup" : "authentication",
+    state.auth.setupError || "Sign in to use loan workflows."
+  );
+  resetWorkflowSections();
+  return false;
 }
 
 function loanMarkup(loan) {
@@ -250,6 +379,10 @@ function removeLoanFromVisibleResults(loanId) {
 }
 
 function showWorkflowSection(sectionId) {
+  if (!requireSignedIn()) {
+    return;
+  }
+
   document
     .querySelectorAll("[data-workflow-section]")
     .forEach((section) => {
@@ -276,6 +409,14 @@ function showWorkflowSection(sectionId) {
 }
 
 async function loadCurrentLoans({ announceSuccess = false } = {}) {
+  if (!requireSignedIn()) {
+    const status = getElement("current-loans-status");
+    if (status) {
+      status.textContent = "Sign in to load current loans.";
+    }
+    return;
+  }
+
   const status = getElement("current-loans-status");
   if (status) {
     status.textContent = "Loading current loans.";
@@ -546,4 +687,5 @@ function bindWebsiteEvents() {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindWebsiteEvents();
+  loadAuthStatus();
 });

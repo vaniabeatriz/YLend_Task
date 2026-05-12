@@ -10,18 +10,35 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "pip install -r requirements.txt" in readme
     assert "flask --app app run --debug" in readme
     assert "pytest --cov=app --cov-report=term-missing --cov-fail-under=80" in readme
+    assert "AUTH0_DOMAIN" in readme
+    assert "AUTH0_CLIENT_ID" in readme
+    assert "AUTH0_CLIENT_SECRET" in readme
+    assert "AUTH0_AUDIENCE" in readme
+    assert "APP_SECRET_KEY" in readme
+    assert ".env` files are ignored by `.gitignore`" in readme
     assert "curl http://127.0.0.1:5000/health" in readme
     assert "GET http://127.0.0.1:5000/" in readme
+    assert "GET http://127.0.0.1:5000/login" in readme
+    assert "GET http://127.0.0.1:5000/logout" in readme
+    assert "GET http://127.0.0.1:5000/auth/status" in readme
     assert "POST http://127.0.0.1:5000/loans" in readme
     assert "GET http://127.0.0.1:5000/loans" in readme
     assert "GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>" in readme
     assert "GET http://127.0.0.1:5000/loans/<loanId>" in readme
     assert "DELETE http://127.0.0.1:5000/loans/<loanId>" in readme
+    assert "Auth0 sign-in for the website" in readme
+    assert "Auth0 bearer-token protection for loan API endpoints" in readme
+    assert "Protected API Authentication" in readme
+    assert '"authentication_required"' in readme
+    assert '-H "Authorization: Bearer $TOKEN"' in readme
+    assert readme.count('-H "Authorization: Bearer $TOKEN"') >= 10
     assert "Website Demo Flow" in readme
     assert "Open `http://127.0.0.1:5000/` in a browser." in readme
+    assert "Sign in with Auth0." in readme
     assert "without horizontal scrolling" in readme
     assert "within 2 seconds" in readme
     assert "service-unavailable feedback" in readme
+    assert "app/auth.py" in readme
     assert "app/templates/index.html" in readme
     assert "app/static/loan_website.css" in readme
     assert "app/static/loan_website.js" in readme
@@ -38,6 +55,7 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "400 Bad Request" in readme
     assert "Restart Behavior" in readme
     assert "201 Created" in readme
+    assert "Auth0 or authentication" not in readme
 
 
 def test_loan_website_quickstart_documents_browser_demo_and_validation():

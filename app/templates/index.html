@@ -10,7 +10,7 @@
     >
     <link rel="stylesheet" href="{{ url_for('static', filename='loan_website.css') }}">
   </head>
-  <body>
+  <body data-initial-auth-error="{{ auth_setup_error or '' }}">
     <main class="app-shell">
       <section id="home-section" class="home-panel" aria-labelledby="home-heading">
         <div class="home-copy">
@@ -19,9 +19,44 @@
           <p class="home-summary">
             Create, find, review, and delete loan.
           </p>
+          <div class="auth-panel" aria-labelledby="auth-status-heading">
+            <h2 id="auth-status-heading" class="visually-hidden">Authentication status</h2>
+            <p
+              id="auth-status"
+              class="auth-status"
+              role="status"
+              aria-live="polite"
+            >
+              Checking sign-in status.
+            </p>
+            <div class="auth-actions">
+              <a
+                id="login-link"
+                class="btn btn-primary btn-sm"
+                href="/login"
+                data-auth-signed-out
+              >
+                Sign in
+              </a>
+              <a
+                id="logout-link"
+                class="btn btn-outline-secondary btn-sm"
+                href="/logout"
+                data-auth-signed-in
+                hidden
+              >
+                Sign out
+              </a>
+            </div>
+          </div>
         </div>
 
-        <nav class="endpoint-menu" aria-label="Loan workflow actions">
+        <nav
+          class="endpoint-menu"
+          aria-label="Loan workflow actions"
+          data-auth-required
+          hidden
+        >
           <button
             class="endpoint-menu-item"
             type="button"
@@ -83,7 +118,7 @@
         data-feedback-type=""
       ></div>
 
-      <div class="workflow-grid">
+      <div class="workflow-grid" data-auth-required hidden>
         <section
           id="create-section"
           class="workflow-panel"
