@@ -1,8 +1,7 @@
 # Quickstart: Loan Website
 
 This quickstart validates the single-page website locally. The website uses the
-same running Flask application as the loan API, and loans remain temporary for
-the current application session.
+same running Flask application as the loan API.
 
 ## Prerequisites
 
@@ -91,9 +90,8 @@ Expected result:
 
 Stop the Flask server with `Ctrl-C`, start it again, and refresh the website.
 
-Expected result: current loans are gone because storage is in memory for the
-running application session only. Lookup or deletion for old loan IDs returns
-not-found feedback.
+Expected result: current loans reset with the local runtime store. Lookup or
+deletion for old loan IDs returns not-found feedback.
 
 ## Run Tests
 

@@ -2,7 +2,7 @@
 
 Small Flask implementation for the YouLend technical task. It provides a
 single-page local website plus the JSON API for creating, looking up, listing,
-searching, and deleting temporary loan records.
+searching, and deleting loan records.
 
 ## Scope
 
@@ -17,7 +17,7 @@ Included:
 - `GET http://127.0.0.1:5000/health`
 - Responsive single-page browser workflow for create, list, borrower search,
   loan ID lookup, and loan deletion
-- In-memory loan storage for the current application session
+- Runtime loan storage for local demos
 - pytest coverage gate at 80%
 
 Out of scope:
@@ -158,7 +158,7 @@ Expected result: `200 OK` with the stored loan record:
 curl -i http://127.0.0.1:5000/loans
 ```
 
-Expected result: `200 OK` with the current in-memory loan collection:
+Expected result: `200 OK` with the current loan collection:
 
 ```json
 {
@@ -294,11 +294,10 @@ Stop the Flask server with `Ctrl-C`, start it again, and list or delete loans
 before creating another record. You can also run the borrower-name lookup
 request.
 
-Expected listing result: `200 OK` with `{"loans": []}`, because loans are stored
-only in memory for the current application session. Expected borrower-name
-lookup result is also `{"loans": []}`. Deleting a loan from a previous session
-returns `404 Not Found`. Running the same create request again returns
-`201 Created`.
+Expected listing result: `200 OK` with `{"loans": []}` after the local runtime
+store resets. Expected borrower-name lookup result is also `{"loans": []}`.
+Deleting a loan from a previous run returns `404 Not Found`. Running the same
+create request again returns `201 Created`.
 
 ## Demo: Validation Error
 
@@ -347,7 +346,7 @@ Latest local result: `76 passed`, total coverage `91.80%`.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
   Decimal parsing, lookup, listing, borrower-name search, deletion, and
-  in-memory storage.
+  runtime storage.
 - `tests/unit/`: service-level validation and storage tests.
 - `tests/integration/`: Flask API, website, and documentation smoke tests.
 
@@ -358,7 +357,7 @@ Latest local result: `76 passed`, total coverage `91.80%`.
 - Deletion uses trimmed, case-sensitive loan ID matching and returns the deleted
   loan record.
 - Deleted loans are removed from loan ID lookup, borrower-name lookup, and full
-  listing for the current application session.
+  listing.
 - Listing returns all current loans in storage order without sorting controls.
 - Borrower names are trimmed before storage.
 - Borrower-name lookup trims the search term and matches stored borrower names
@@ -367,5 +366,5 @@ Latest local result: `76 passed`, total coverage `91.80%`.
   query is rejected as validation error.
 - Funding and repayment amounts must be valid monetary values greater than 0.
 - Amounts are parsed with `Decimal` internally and returned as JSON numbers.
-- Storage is process-local and disappears when the application restarts.
+- Storage is process-local and resets when the application starts again.
 - Local Flask deployment is enough for this first API slice.

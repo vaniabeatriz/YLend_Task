@@ -10,7 +10,7 @@
 Add a single-page website for the existing loan-management API. The page lets a
 reviewer create loans, list current loans, search by borrower name, look up by
 loan ID, and delete by loan ID from one responsive browser surface. Reuse the
-existing Flask application, loan service, and current-session in-memory store.
+existing Flask application, loan service, and local runtime store.
 Add a Flask-rendered page plus static browser assets that call the existing JSON
 endpoints from the same origin, show clear success/error/empty states, and keep
 Auth0, durable persistence, public exposure, container registry work,
@@ -21,13 +21,13 @@ scope.
 
 **Language/Version**: Python 3.11+ (local environment currently reports Python 3.14.4)  
 **Primary Dependencies**: Flask, Bootstrap for UI styling, pytest, pytest-cov; browser Fetch API via plain JavaScript with no frontend framework or build step  
-**Storage**: Existing process-local in-memory dictionary keyed by trimmed, case-sensitive loan ID; website adds no storage layer  
+**Storage**: Existing process-local runtime dictionary keyed by trimmed, case-sensitive loan ID; website adds no storage layer
 **Testing**: pytest with coverage >=80%; integration tests for page rendering, route/static assets, API regressions, and documented demo flow  
 **Target Platform**: Local Flask development server and modern browser  
 **Project Type**: Flask web application serving both JSON API endpoints and one browser page  
 **Performance Goals**: Primary website actions show success or error feedback within 2 seconds for local technical-test usage; reviewer can complete the full browser demo in under 6 minutes  
 **Constraints**: Explainable under 40 minutes; single-page local demo; no authentication; no persistence beyond runtime; no public exposure; no container registry; no Kubernetes; no cloud infrastructure; no Node/Angular build pipeline in this slice; concise documentation  
-**Scale/Scope**: Single-user local browser demo over the current loan API, one page, current-session temporary loan records only
+**Scale/Scope**: Single-user local browser demo over the current loan API and one page
 
 ## Constitution Check
 
@@ -52,7 +52,7 @@ scope.
   **Pass**: README and feature quickstart will cover local website usage.
 - Data storage and project structure are the simplest options that satisfy the
   feature requirements.
-  **Pass**: the website reuses the existing in-memory store and app structure.
+  **Pass**: the website reuses the existing runtime store and app structure.
 
 ## Project Structure
 
@@ -131,7 +131,7 @@ See [research.md](./research.md). All planning questions are resolved; no
 - Scope remains one local single-page website over existing API workflows.
 - Design uses Flask-rendered templates, Bootstrap styling, and plain browser
   JavaScript only.
-- Existing API endpoints and in-memory storage remain the data boundary.
+- Existing API endpoints and runtime storage remain the data boundary.
 - No Angular, Auth0, persistence, public exposure, container registry,
   Kubernetes, cloud infrastructure, or separate frontend build pipeline is
   introduced.

@@ -33,7 +33,7 @@
 
 - [X] T006 Review existing JSON API route shapes, status codes, and error payloads for website reuse in `app/routes.py`.
 - [X] T007 [P] Review Flask app factory defaults for templates and static assets in `app/__init__.py`.
-- [X] T008 [P] Review current-session fixture isolation for website tests in `tests/conftest.py`.
+- [X] T008 [P] Review runtime fixture isolation for website tests in `tests/conftest.py`.
 
 **Checkpoint**: Existing app structure and API behaviours are ready for the website layer.
 
@@ -116,12 +116,12 @@ Write these tests first and confirm they fail before implementation.
 
 ### Tests for User Story 4 (REQUIRED)
 
-- [X] T028 [US4] Add integration tests for temporary-session note, service-unavailable feedback copy, loading/action-in-progress selectors, and accessible status regions in `tests/integration/test_loan_website.py`.
+- [X] T028 [US4] Add integration tests for service-unavailable feedback copy, loading/action-in-progress selectors, and accessible status regions in `tests/integration/test_loan_website.py`.
 - [X] T029 [US4] Add integration tests that `app/static/loan_website.css` contains responsive layout rules, mobile-safe result selectors, and no-horizontal-overflow safeguards in `tests/integration/test_loan_website.py`.
 
 ### Implementation for User Story 4
 
-- [X] T030 [US4] Add temporary-session note, shared status regions, loading markers, and retry-friendly form structure in `app/templates/index.html`.
+- [X] T030 [US4] Add shared status regions, loading markers, and retry-friendly form structure in `app/templates/index.html`.
 - [X] T031 [US4] Implement shared action-state guard, service-unavailable handling, loading feedback, repeated-submit prevention, and retry-preserving failures in `app/static/loan_website.js`.
 - [X] T032 [US4] Add responsive desktop/mobile layout rules that keep forms, buttons, result rows, and feedback readable without horizontal scrolling in `app/static/loan_website.css`.
 - [X] T033 [US4] Run focused US4 tests with `.venv/bin/pytest tests/integration/test_loan_website.py tests/integration/test_health_api.py` covering `app/templates/index.html`, `app/static/loan_website.js`, and `app/static/loan_website.css`.
