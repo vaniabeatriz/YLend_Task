@@ -93,7 +93,7 @@ are understandable.
 - Loan IDs differ only by letter case.
 - Borrower-name search returns no current loans.
 - Loan ID lookup or deletion targets a loan that does not exist or was already deleted.
-- Current loans disappear after the service restarts.
+- Current loans reset after the service starts again.
 - The loan-management service is unavailable or returns an unexpected response.
 - The page is used on a narrow viewport where tables, forms, and messages could otherwise overflow.
 - A user submits the same action repeatedly before the previous action has visibly completed.
@@ -116,11 +116,11 @@ are understandable.
 - **FR-012**: The website MUST keep authentication integration, durable persistence, public exposure, container registry work, Kubernetes, and cloud infrastructure out of scope for this slice.
 - **FR-013**: The website MUST provide clear setup, run, test, and demo instructions for the website workflow.
 - **FR-014**: The website MUST be testable with automated coverage at or above 80% for implemented behaviour.
-- **FR-015**: The website MUST keep the existing temporary-session data boundary visible to users through documentation and appropriate empty/not-found states after restart.
+- **FR-015**: The website MUST document the local runtime storage boundary through setup notes and appropriate empty/not-found states after the service starts again.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Loan**: An in-memory record with loan ID, borrower name,
+- **Loan**: A runtime record with loan ID, borrower name,
   funding amount, and repayment amount.
 - **Loan Form Input**: User-entered loan ID, borrower name, funding amount,
   repayment amount, borrower-name search term, or loan ID action term.
@@ -140,7 +140,7 @@ are understandable.
 - **SC-005**: Empty, validation, duplicate, not-found, and service-unavailable states are covered by automated or documented validation.
 - **SC-006**: Reviewer can run the website, service, and test suite from documentation without missing setup steps.
 - **SC-007**: Test command reports at least 80% statement coverage for implemented behaviour.
-- **SC-008**: The website scope, trade-offs, and temporary-session assumptions can be explained in under 40 minutes.
+- **SC-008**: The website scope, trade-offs, and runtime storage assumptions can be explained in under 40 minutes.
 
 ## Assumptions
 
@@ -151,8 +151,8 @@ are understandable.
 - The website is a local demonstration surface and does not introduce
   authentication, durable storage, public exposure, container registry work,
   Kubernetes, or cloud infrastructure.
-- Current loans remain temporary and may disappear when the running service
-  restarts.
+- Current loans are held by the local runtime store and reset when the service
+  starts again.
 - Loan ID and borrower-name matching continue to follow the existing trimmed,
   case-sensitive rules from the service.
 - The website should favor clear, compact workflows over marketing content.

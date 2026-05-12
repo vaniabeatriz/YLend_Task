@@ -22,7 +22,7 @@ and avoid a separate build system.
 **Rationale**: The current API already supports create, list, borrower-name
 search, loan ID lookup, and deletion. The website can call those endpoints from
 the same origin, preserving existing validation, duplicate, not-found,
-temporary-session, and case-sensitive matching semantics.
+runtime reset, and case-sensitive matching semantics.
 
 **Alternatives considered**:
 

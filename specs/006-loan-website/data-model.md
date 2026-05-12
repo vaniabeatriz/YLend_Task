@@ -2,7 +2,7 @@
 
 ## Entity: Loan
 
-A `Loan` is an in-memory record already managed by the existing
+A `Loan` is a runtime record already managed by the existing
 loan service.
 
 ### Fields
@@ -16,7 +16,7 @@ loan service.
 
 ### Relationships
 
-- A loan belongs to the current application session only.
+- A loan belongs to the local runtime store.
 - The website displays loans returned by the existing create, list,
   borrower-name search, loan ID lookup, and delete workflows.
 
@@ -87,7 +87,7 @@ The transient state of an in-progress website action.
 - `Loan ID Lookup Submitted -> Lookup Result`: one matching loan or not-found feedback is shown.
 - `Delete Submitted -> Deleted Loan Result`: matching loan is removed and delete confirmation is shown.
 - `Delete Submitted -> Not Found Feedback`: absent or already-deleted loan leaves visible current loans unchanged.
-- `Service Restart -> Empty/Not Found`: previously visible loans may disappear because data is temporary.
+- `Service Restart -> Empty/Not Found`: previously visible loans reset with the local runtime store.
 - `Service Unavailable -> Retryable Feedback`: form values remain available for retry.
 
 ## Validation And Display Rules

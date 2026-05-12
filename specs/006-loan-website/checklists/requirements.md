@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Validation passed on initial review. The specification covers the website user workflows, responsive behaviour, success and error states, temporary-session assumptions, and explicit out-of-scope boundaries.
+- Validation passed on initial review. The specification covers the website user workflows, responsive behaviour, success and error states, runtime storage assumptions, and explicit out-of-scope boundaries.
