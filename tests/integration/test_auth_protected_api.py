@@ -106,4 +106,4 @@ def test_missing_auth0_config_on_protected_api_returns_setup_error():
 
     assert response.status_code == 503
     assert response.get_json()["error"] == "auth_configuration_error"
-    assert response.get_json()["message"] == "please, sign in to register"
+    assert response.get_json()["message"] == "Please sign in or register to continue."

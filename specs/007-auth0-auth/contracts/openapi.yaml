@@ -91,7 +91,7 @@ components:
             $ref: "#/components/schemas/Error"
           example:
             error: auth_configuration_error
-            message: "please, sign in to register"
+            message: "Please sign in or register to continue."
 paths:
   /health:
     get:
