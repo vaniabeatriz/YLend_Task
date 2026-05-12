@@ -113,13 +113,16 @@ def test_get_loans_by_unknown_borrower_name_returns_empty_collection(client):
     assert response.get_json() == {"loans": []}
 
 
-def test_get_loans_by_borrower_name_returns_empty_collection_after_new_app_session():
-    first_client = create_app({"TESTING": True}).test_client()
-    restarted_client = create_app({"TESTING": True}).test_client()
+def test_get_loans_by_borrower_name_returns_persisted_matches_after_new_app_session(
+    tmp_path,
+):
+    config = {"TESTING": True, "LOAN_DATABASE_PATH": str(tmp_path / "loans.sqlite3")}
+    first_client = create_app(config).test_client()
 
     created = first_client.post("/loans", json=valid_payload(loanId="LN-RESTART"))
     listed_before_restart = first_client.get("/loans?borrowerName=Jane%20Smith")
 
+    restarted_client = create_app(config).test_client()
     started_at = perf_counter()
     listed_after_restart = restarted_client.get("/loans?borrowerName=Jane%20Smith")
     elapsed = perf_counter() - started_at
@@ -129,7 +132,7 @@ def test_get_loans_by_borrower_name_returns_empty_collection_after_new_app_sessi
     assert listed_before_restart.get_json()["loans"][0]["loanId"] == "LN-RESTART"
     assert listed_after_restart.status_code == 200
     assert elapsed < 2
-    assert listed_after_restart.get_json() == {"loans": []}
+    assert listed_after_restart.get_json()["loans"][0]["loanId"] == "LN-RESTART"
 
 
 def test_get_loans_by_empty_borrower_name_returns_validation_error(client):

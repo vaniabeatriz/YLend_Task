@@ -18,6 +18,10 @@ htmlcov/
 # Environment and local files
 .env
 .env.*
+instance/
+*.sqlite
+*.sqlite3
+*.db
 .DS_Store
 *.tmp
 *.swp

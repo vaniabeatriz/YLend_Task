@@ -156,6 +156,14 @@ function errorFeedback(error, fallbackMessage) {
     };
   }
 
+  if (error.kind === "loan_storage_unavailable") {
+    return {
+      type: "service-unavailable",
+      message: error.payload.message || "Loan storage is unavailable.",
+      details: [],
+    };
+  }
+
   if (error.kind === "validation_error") {
     return {
       type: "validation",

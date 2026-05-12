@@ -23,12 +23,11 @@ Included:
 - Auth0 bearer-token protection for loan API endpoints
 - Responsive single-page browser workflow for create, list, borrower search,
   loan ID lookup, and loan deletion
-- Runtime loan storage for local demos
+- Durable local SQLite loan storage for local demos
 - pytest coverage gate at 80%
 
 Out of scope:
 
-- Durable persistence
 - Public exposure
 - Container registry work
 - Cloud or Kubernetes deployment
@@ -69,6 +68,19 @@ export APP_SECRET_KEY="$(openssl rand -hex 32)"
 Local `.env` files are ignored by `.gitignore`. The app still starts without
 Auth0 values: `/health` and `/` remain public, while sign-in and protected API
 flows show setup guidance instead of exposing loan data.
+
+## Persistence Configuration
+
+Loans are stored in a local SQLite database so created records survive Flask app
+restarts. By default, the database lives in the Flask instance directory. For a
+predictable local demo path, set:
+
+```bash
+export LOAN_DATABASE_PATH="instance/loans.sqlite3"
+```
+
+The app prepares the database and loan table automatically on startup. To reset
+local demo data, stop Flask and remove the configured SQLite file.
 
 ## Run
 
@@ -379,10 +391,11 @@ Stop the Flask server with `Ctrl-C`, start it again, sign in, and list or
 delete loans before creating another record. You can also run the borrower-name
 lookup request.
 
-Expected listing result: `200 OK` with `{"loans": []}` after the local runtime
-store resets. Expected borrower-name lookup result is also `{"loans": []}`.
-Deleting a loan from a previous run returns `404 Not Found`. Running the same
-create request again returns `201 Created`.
+Expected result after restart with the same `LOAN_DATABASE_PATH`: lookup,
+listing, and borrower-name search still include loans created before restart.
+Deleting a loan removes it from the SQLite database, so it remains absent after
+later restarts. Running the same create request again for an existing loan ID
+returns `409 Conflict`.
 
 ## Demo: Validation Error
 
@@ -421,7 +434,7 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `98 passed`, total coverage `86.84%`.
+Latest local result: `115 passed`; total coverage `87.65%`.
 
 ## Architecture
 
@@ -429,6 +442,8 @@ Latest local result: `98 passed`, total coverage `86.84%`.
   session handling, and auth error responses.
 - `app/routes.py`: HTTP routes, request parsing, auth gates, and JSON
   responses.
+- `app/repositories/loan_repository.py`: SQLite schema initialization and
+  durable loan storage.
 - `app/templates/index.html`: single-page browser website.
 - `app/static/loan_website.css`: responsive website styling.
 - `app/static/loan_website.js`: browser Fetch API workflow handling and
@@ -436,8 +451,8 @@ Latest local result: `98 passed`, total coverage `86.84%`.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
   Decimal parsing, lookup, listing, borrower-name search, deletion, and
-  runtime storage.
-- `tests/unit/`: service-level validation, storage, and auth tests.
+  repository coordination.
+- `tests/unit/`: repository, service-level validation, storage, and auth tests.
 - `tests/integration/`: Flask API, website, auth, and documentation smoke
   tests.
 
@@ -456,8 +471,10 @@ Latest local result: `98 passed`, total coverage `86.84%`.
 - A missing `borrowerName` query lists all current loans; a blank `borrowerName`
   query is rejected as validation error.
 - Funding and repayment amounts must be valid monetary values greater than 0.
-- Amounts are parsed with `Decimal` internally and returned as JSON numbers.
-- Storage is process-local and resets when the application starts again.
+- Amounts are parsed with `Decimal` internally, stored as decimal text in
+  SQLite, and returned as JSON numbers.
+- SQLite storage is local to the configured database path and survives Flask app
+  restarts using that same path.
 - Auth0 login and JWT verification are mocked in automated tests so the suite
   does not require live Auth0 credentials or network access.
 - The website reads the Auth0 access token from authenticated status for local

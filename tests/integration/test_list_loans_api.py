@@ -97,13 +97,14 @@ def test_get_loans_returns_empty_collection_for_fresh_session(client):
     assert response.get_json() == {"loans": []}
 
 
-def test_get_loans_returns_empty_collection_after_new_app_session():
-    first_client = create_app({"TESTING": True}).test_client()
-    restarted_client = create_app({"TESTING": True}).test_client()
+def test_get_loans_returns_persisted_collection_after_new_app_session(tmp_path):
+    config = {"TESTING": True, "LOAN_DATABASE_PATH": str(tmp_path / "loans.sqlite3")}
+    first_client = create_app(config).test_client()
 
     created = first_client.post("/loans", json=valid_payload(loanId="LN-RESTART"))
     listed_before_restart = first_client.get("/loans")
 
+    restarted_client = create_app(config).test_client()
     started_at = perf_counter()
     listed_after_restart = restarted_client.get("/loans")
     elapsed = perf_counter() - started_at
@@ -113,4 +114,4 @@ def test_get_loans_returns_empty_collection_after_new_app_session():
     assert listed_before_restart.get_json()["loans"][0]["loanId"] == "LN-RESTART"
     assert listed_after_restart.status_code == 200
     assert elapsed < 2
-    assert listed_after_restart.get_json() == {"loans": []}
+    assert listed_after_restart.get_json()["loans"][0]["loanId"] == "LN-RESTART"
