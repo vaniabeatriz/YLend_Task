@@ -91,7 +91,7 @@ components:
             $ref: "#/components/schemas/Error"
           example:
             error: auth_configuration_error
-            message: "Missing Auth0 configuration: AUTH0_DOMAIN, AUTH0_AUDIENCE."
+            message: "Please sign in or create an account to continue."
 paths:
   /health:
     get:
