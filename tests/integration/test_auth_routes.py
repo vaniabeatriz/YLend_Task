@@ -100,5 +100,5 @@ def test_missing_auth0_config_does_not_block_health_or_home():
     assert health.status_code == 200
     assert health.get_json() == {"status": "ok"}
     assert login.status_code == 503
-    assert "Missing Auth0 configuration" in login.get_data(as_text=True)
-    assert "Missing Auth0 configuration" in status.get_json()["setupError"]
+    assert "please, sign in to register" in login.get_data(as_text=True)
+    assert status.get_json()["setupError"] == "please, sign in to register"

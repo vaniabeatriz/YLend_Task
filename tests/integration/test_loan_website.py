@@ -111,7 +111,7 @@ def test_website_home_can_render_initial_auth_setup_error(client):
     body = response.get_data(as_text=True)
 
     assert response.status_code == 503
-    assert "Missing Auth0 configuration" in body
+    assert "please, sign in to register" in body
 
 
 def test_website_home_renders_search_and_lookup_regions(client):

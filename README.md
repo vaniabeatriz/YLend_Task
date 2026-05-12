@@ -463,6 +463,6 @@ Latest local result: `98 passed`, total coverage `86.84%`.
 - The website reads the Auth0 access token from authenticated status for local
   same-origin API calls; production token/session hardening is deferred with
   public deployment.
-- Missing Auth0 configuration is reported through setup guidance while public
+- Auth0 setup gaps are reported through setup guidance while public
   routes remain available.
 - Local Flask deployment is enough for this slice.

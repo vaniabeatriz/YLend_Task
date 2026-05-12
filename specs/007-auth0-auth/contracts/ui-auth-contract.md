@@ -96,7 +96,7 @@ Setup-error response:
   "authenticated": false,
   "user": null,
   "accessToken": null,
-  "setupError": "Missing Auth0 configuration: AUTH0_DOMAIN, AUTH0_AUDIENCE"
+  "setupError": "please, sign in to register"
 }
 ```
 

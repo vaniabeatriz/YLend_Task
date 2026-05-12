@@ -112,7 +112,7 @@ def _truthy(value):
 
 def _setup_message(missing):
     if missing:
-        return f"Missing Auth0 configuration: {', '.join(missing)}."
+        return "please, sign in to register"
     return "Auth0 authentication is not configured."
 
 
