@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app.services.loan_service import (
     DuplicateLoanError,
@@ -7,6 +7,11 @@ from app.services.loan_service import (
 )
 
 api = Blueprint("api", __name__)
+
+
+@api.get("/")
+def index():
+    return render_template("index.html")
 
 
 def error_response(error, message, status_code, details=None):

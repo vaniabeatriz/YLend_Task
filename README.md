@@ -1,27 +1,31 @@
-# Loan API
+# Loan Management API and Website
 
-Small Flask API slice for the YouLend technical task. This implementation
-covers creating, looking up, listing, searching, and deleting temporary loan
-records.
+Small Flask implementation for the YouLend technical task. It provides a
+single-page local website plus the JSON API for creating, looking up, listing,
+searching, and deleting temporary loan records.
 
 ## Scope
 
 Included:
 
+- `GET http://127.0.0.1:5000/`
 - `POST http://127.0.0.1:5000/loans`
 - `GET http://127.0.0.1:5000/loans`
 - `GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>`
 - `GET http://127.0.0.1:5000/loans/<loanId>`
 - `DELETE http://127.0.0.1:5000/loans/<loanId>`
 - `GET http://127.0.0.1:5000/health`
+- Responsive single-page browser workflow for create, list, borrower search,
+  loan ID lookup, and loan deletion
 - In-memory loan storage for the current application session
 - pytest coverage gate at 80%
 
 Out of scope:
 
-- Browser UI
-- Authentication
+- Auth0 or authentication
+- Durable persistence
 - Public exposure
+- Container registry work
 - Cloud or Kubernetes deployment
 
 ## Setup
@@ -38,7 +42,33 @@ pip install -r requirements.txt
 flask --app app run --debug
 ```
 
-The API runs at `http://127.0.0.1:5000`.
+The website runs at `http://127.0.0.1:5000/`. The API runs from the same Flask
+app under the routes listed above.
+
+## Website Demo Flow
+
+Open `http://127.0.0.1:5000/` in a browser.
+
+1. Confirm the current-loans section shows an empty current-list message in a
+   fresh session.
+2. Create loan `LN-001` for borrower `Jane Smith` with funding amount `1000.0`
+   and repayment amount `1200.0`.
+3. Confirm the success message identifies `LN-001` and the current loans list
+   includes it.
+4. Create `LN-001` again and confirm duplicate-loan feedback appears while the
+   entered values remain available for correction.
+5. Search borrower name `Jane Smith`, then search `No Match` and confirm the
+   empty-result state.
+6. Look up loan ID `LN-001`, then look up `LN-MISSING` and confirm not-found
+   feedback.
+7. Delete loan ID `LN-001`, then delete it again and confirm the deleted-loan
+   confirmation followed by not-found feedback.
+8. Resize the browser to a mobile-sized width and confirm forms, buttons,
+   result rows, and feedback remain readable without horizontal scrolling.
+
+Primary success and error feedback is expected to appear within 2 seconds in
+local usage. If the Flask app is stopped while the page is open, the next action
+shows service-unavailable feedback and keeps entered values available for retry.
 
 ## Health Check
 
@@ -306,17 +336,20 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `64 passed`, total coverage `91.67%`.
+Latest local result: `76 passed`, total coverage `91.80%`.
 
 ## Architecture
 
 - `app/routes.py`: HTTP routes, request parsing, and JSON responses.
+- `app/templates/index.html`: single-page browser website.
+- `app/static/loan_website.css`: responsive website styling.
+- `app/static/loan_website.js`: browser Fetch API workflow handling.
 - `app/models/loan.py`: immutable loan data shape and JSON serialization.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
   Decimal parsing, lookup, listing, borrower-name search, deletion, and
   in-memory storage.
 - `tests/unit/`: service-level validation and storage tests.
-- `tests/integration/`: Flask API and documentation smoke tests.
+- `tests/integration/`: Flask API, website, and documentation smoke tests.
 
 ## Trade-Offs and Assumptions
 
