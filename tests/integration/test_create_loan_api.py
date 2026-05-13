@@ -83,18 +83,19 @@ def test_post_loans_rejects_extra_fields(client):
     }
 
 
-def test_in_memory_store_resets_for_new_app_session():
-    first_client = create_app({"TESTING": True}).test_client()
-    restarted_client = create_app({"TESTING": True}).test_client()
+def test_durable_store_rejects_duplicate_after_new_app_session(tmp_path):
+    config = {"TESTING": True, "LOAN_DATABASE_PATH": str(tmp_path / "loans.sqlite3")}
+    first_client = create_app(config).test_client()
 
     created = first_client.post("/loans", json=valid_payload(loanId="LN-RESTART"))
     duplicate_before_restart = first_client.post(
         "/loans", json=valid_payload(loanId="LN-RESTART")
     )
+    restarted_client = create_app(config).test_client()
     created_after_restart = restarted_client.post(
         "/loans", json=valid_payload(loanId="LN-RESTART")
     )
 
     assert created.status_code == 201
     assert duplicate_before_restart.status_code == 409
-    assert created_after_restart.status_code == 201
+    assert created_after_restart.status_code == 409

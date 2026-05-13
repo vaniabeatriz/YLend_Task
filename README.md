@@ -1,28 +1,25 @@
-# Loan API
+# Loan Management API and Website
 
-Small Flask API slice for the YouLend technical task. This implementation
-covers creating, looking up, listing, and searching temporary loan records by
-borrower name.
+Flask app for the YouLend technical task. It provides a small website and
+authenticated JSON API for creating, listing, searching, looking up, and
+deleting loan records.
 
-## Scope
+## Endpoints
 
-Included:
+- `GET /`
+- `GET /login`
+- `GET /callback`
+- `GET /logout`
+- `GET /auth/status`
+- `GET /health`
+- `POST /loans`
+- `GET /loans`
+- `GET /loans?borrowerName=<borrowerName>`
+- `GET /loans/<loanId>`
+- `DELETE /loans/<loanId>`
 
-- `POST http://127.0.0.1:5000/loans`
-- `GET http://127.0.0.1:5000/loans`
-- `GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>`
-- `GET http://127.0.0.1:5000/loans/<loanId>`
-- `GET http://127.0.0.1:5000/health`
-- In-memory loan storage for the current application session
-- pytest coverage gate at 80%
-
-Out of scope:
-
-- Browser UI
-- Loan deletion
-- Authentication
-- Public exposure
-- Cloud or Kubernetes deployment
+Loan endpoints require a valid Auth0 bearer token. `/`, `/login`, `/callback`,
+`/logout`, `/auth/status`, and `/health` are public.
 
 ## Setup
 
@@ -32,256 +29,155 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run
+## Auth0
+
+Create an Auth0 Regular Web Application and an Auth0 API.
+
+Local application URLs:
+
+- Allowed Callback URLs: `http://127.0.0.1:5000/callback`
+- Allowed Logout URLs: `http://127.0.0.1:5000/`
+- Allowed Web Origins: `http://127.0.0.1:5000`
+
+Use the Auth0 API `Identifier` as `AUTH0_AUDIENCE`.
+
+Local environment:
+
+```bash
+export AUTH0_DOMAIN="your-tenant.auth0.com"
+export AUTH0_CLIENT_ID="your-client-id"
+export AUTH0_CLIENT_SECRET="your-client-secret"
+export AUTH0_AUDIENCE="https://your-loan-api"
+export AUTH0_CALLBACK_URL="http://127.0.0.1:5000/callback"
+export AUTH0_LOGOUT_RETURN_URL="http://127.0.0.1:5000/"
+export APP_SECRET_KEY="$(openssl rand -hex 32)"
+```
+
+`.env` files are ignored by git.
+
+## Storage
+
+Local runs use SQLite by default:
+
+```bash
+export LOAN_DATABASE_PATH="instance/loans.sqlite3"
+```
+
+AWS ECS uses PostgreSQL/RDS when `DATABASE_URL` or `LOAN_DATABASE_URL` is set.
+The ECS task also sets:
+
+```bash
+LOAN_REQUIRE_DATABASE_URL=true
+```
+
+This prevents the deployed app from falling back to container-local SQLite.
+
+## Run Locally
 
 ```bash
 flask --app app run --debug
 ```
 
-The API runs at `http://127.0.0.1:5000`.
+Open:
 
-## Health Check
+```text
+http://127.0.0.1:5000/
+```
+
+Health check:
 
 ```bash
-curl http://127.0.0.1:5000/health
+curl -i http://127.0.0.1:5000/health
 ```
 
 Expected response:
 
 ```json
-{
-  "status": "ok"
-}
+{"status":"ok"}
 ```
 
-## Demo: Empty Loan List
+## Docker
 
 ```bash
-curl -i http://127.0.0.1:5000/loans
+docker build -t yl-loans:local .
+docker run --rm -p 5000:5000 \
+  -e LOAN_DATABASE_PATH=/tmp/loans.sqlite3 \
+  yl-loans:local
 ```
 
-Expected result: `200 OK` with an empty collection when no loans exist:
+## AWS
 
-```json
-{
-  "loans": []
-}
-```
+Infrastructure lives under `infra/aws`.
 
-## Demo: Create a Loan
+- `infra/aws/bootstrap`: creates the ECR repository.
+- `infra/aws/app`: creates ALB, ECS Fargate, RDS PostgreSQL, Secrets Manager,
+  and CloudWatch logs.
+
+Local Terraform state, plans, `.env`, `terraform.tfvars`, and local databases
+are ignored by git.
+
+Create ECR:
 
 ```bash
-curl -i -X POST http://127.0.0.1:5000/loans \
-  -H "Content-Type: application/json" \
-  -d '{
-    "loanId": "LN-001",
-    "borrowerName": "Jane Smith",
-    "fundingAmount": 1000.0,
-    "repaymentAmount": 1200.0
-  }'
+cd infra/aws/bootstrap
+terraform init
+terraform apply \
+  -var='aws_region=eu-west-2' \
+  -var='project_name=yl-loans' \
+  -var='environment=demo'
 ```
 
-Expected result: `201 Created` with the stored loan record:
-
-```json
-{
-  "borrowerName": "Jane Smith",
-  "fundingAmount": 1000.0,
-  "loanId": "LN-001",
-  "repaymentAmount": 1200.0
-}
-```
-
-## Demo: Look Up a Loan
+Build and push the image:
 
 ```bash
-curl -i http://127.0.0.1:5000/loans/LN-001
+export AWS_REGION=eu-west-2
+export ECR_REPOSITORY_URL="<ecr_repository_url>"
+export IMAGE_TAG="$(git rev-parse --short HEAD)"
+
+aws ecr get-login-password --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URL"
+
+docker build -t "yl-loans:$IMAGE_TAG" .
+docker tag "yl-loans:$IMAGE_TAG" "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
 ```
 
-Expected result: `200 OK` with the stored loan record:
-
-```json
-{
-  "borrowerName": "Jane Smith",
-  "fundingAmount": 1000.0,
-  "loanId": "LN-001",
-  "repaymentAmount": 1200.0
-}
-```
-
-## Demo: List Current Loans
+Create `infra/aws/app/terraform.tfvars` locally with the required image URI,
+Auth0 values, and secrets. Then deploy:
 
 ```bash
-curl -i http://127.0.0.1:5000/loans
+cd ../app
+terraform init
+terraform apply
 ```
 
-Expected result: `200 OK` with the current in-memory loan collection:
+After deployment, add the `service_url` output to the Auth0 application:
 
-```json
-{
-  "loans": [
-    {
-      "borrowerName": "Jane Smith",
-      "fundingAmount": 1000.0,
-      "loanId": "LN-001",
-      "repaymentAmount": 1200.0
-    }
-  ]
-}
-```
+- Allowed Callback URLs: `<service_url>/callback`
+- Allowed Logout URLs: `<service_url>/`
+- Allowed Web Origins: `<service_url>`
 
-## Demo: Look Up Loans By Borrower Name
+Check the deployed app:
 
 ```bash
-curl -i "http://127.0.0.1:5000/loans?borrowerName=Jane%20Smith"
+curl -i "<service_url>/health"
 ```
 
-Expected result: `200 OK` with current loans for that borrower:
-
-```json
-{
-  "loans": [
-    {
-      "borrowerName": "Jane Smith",
-      "fundingAmount": 1000.0,
-      "loanId": "LN-001",
-      "repaymentAmount": 1200.0
-    }
-  ]
-}
-```
-
-## Demo: No Borrower Matches
-
-```bash
-curl -i "http://127.0.0.1:5000/loans?borrowerName=No%20Match"
-```
-
-Expected result: `200 OK` with an empty collection:
-
-```json
-{
-  "loans": []
-}
-```
-
-## Demo: Blank Borrower Name Lookup
-
-```bash
-curl -i "http://127.0.0.1:5000/loans?borrowerName="
-```
-
-Expected result: `400 Bad Request`:
-
-```json
-{
-  "details": [
-    {
-      "field": "borrowerName",
-      "message": "borrowerName is required."
-    }
-  ],
-  "error": "validation_error",
-  "message": "borrowerName is required."
-}
-```
-
-## Demo: Duplicate Loan
-
-Run the same create request again.
-
-Expected result: `409 Conflict`:
-
-```json
-{
-  "error": "duplicate_loan_id",
-  "message": "A loan with this loan ID already exists."
-}
-```
-
-## Demo: Missing Loan Lookup
-
-```bash
-curl -i http://127.0.0.1:5000/loans/LN-MISSING
-```
-
-Expected result: `404 Not Found`:
-
-```json
-{
-  "error": "loan_not_found",
-  "message": "No loan exists for this loan ID."
-}
-```
-
-## Demo: Restart Behavior
-
-Stop the Flask server with `Ctrl-C`, start it again, and list loans before
-creating another record. You can also run the borrower-name lookup request.
-
-Expected listing result: `200 OK` with `{"loans": []}`, because loans are stored
-only in memory for the current application session. Expected borrower-name
-lookup result is also `{"loans": []}`. Running the same create request again
-returns `201 Created`.
-
-## Demo: Validation Error
-
-```bash
-curl -i -X POST http://127.0.0.1:5000/loans \
-  -H "Content-Type: application/json" \
-  -d '{
-    "loanId": "LN-002",
-    "borrowerName": "Jane Smith",
-    "fundingAmount": 0,
-    "repaymentAmount": 1200.0
-  }'
-```
-
-Expected result: `400 Bad Request`:
-
-```json
-{
-  "details": [
-    {
-      "field": "fundingAmount",
-      "message": "fundingAmount must be greater than 0."
-    }
-  ],
-  "error": "validation_error",
-  "message": "Loan could not be created because one or more fields are invalid."
-}
-```
-
-## Test
+## Tests
 
 ```bash
 pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 ```
 
-Expected result: all tests pass and statement coverage is at least 80%.
-
-Latest local result: `52 passed`, total coverage `91.98%`.
-
 ## Architecture
 
-- `app/routes.py`: HTTP routes, request parsing, and JSON responses.
-- `app/models/loan.py`: immutable loan data shape and JSON serialization.
-- `app/services/loan_service.py`: validation, normalization, duplicate checks,
-  Decimal parsing, lookup, listing, borrower-name search, and in-memory storage.
-- `tests/unit/`: service-level validation and storage tests.
-- `tests/integration/`: Flask API and documentation smoke tests.
-
-## Trade-Offs and Assumptions
-
-- Loan IDs are caller-supplied, trimmed before storage, and case-sensitive.
-- Lookup uses the same trimmed, case-sensitive loan ID rules as creation.
-- Listing returns all current loans in storage order without sorting controls.
-- Borrower names are trimmed before storage.
-- Borrower-name lookup trims the search term and matches stored borrower names
-  exactly and case-sensitively.
-- A missing `borrowerName` query lists all current loans; a blank `borrowerName`
-  query is rejected as validation error.
-- Funding and repayment amounts must be valid monetary values greater than 0.
-- Amounts are parsed with `Decimal` internally and returned as JSON numbers.
-- Storage is process-local and disappears when the application restarts.
-- Local Flask deployment is enough for this first API slice.
+- `app/auth.py`: Auth0 login, logout, sessions, and token validation.
+- `app/routes.py`: Flask routes and JSON responses.
+- `app/services/loan_service.py`: validation and loan workflow rules.
+- `app/repositories/loan_repository.py`: SQLite repository.
+- `app/repositories/postgres_loan_repository.py`: PostgreSQL/RDS repository.
+- `app/repositories/repository_factory.py`: runtime storage selection.
+- `app/templates/index.html`: website.
+- `app/static/`: website CSS and JavaScript.
+- `infra/aws/`: Terraform for ECR, ECS, ALB, RDS, secrets, and logs.
+- `tests/`: unit and integration tests.

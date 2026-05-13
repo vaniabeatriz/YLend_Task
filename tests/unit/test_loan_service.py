@@ -1,5 +1,6 @@
 import pytest
 
+from app.repositories.loan_repository import SQLiteLoanRepository
 from app.services.loan_service import (
     DuplicateLoanError,
     LoanNotFoundError,
@@ -19,8 +20,14 @@ def valid_payload(**overrides):
     return payload
 
 
-def test_create_loan_trims_text_and_returns_stored_record():
-    service = LoanService()
+@pytest.fixture
+def service(tmp_path):
+    repository = SQLiteLoanRepository(tmp_path / "loans.sqlite3")
+    repository.initialize()
+    return LoanService(repository)
+
+
+def test_create_loan_trims_text_and_returns_stored_record(service):
 
     loan = service.create_loan(
         valid_payload(
@@ -48,8 +55,7 @@ def test_create_loan_trims_text_and_returns_stored_record():
         ("borrowerName", "   "),
     ],
 )
-def test_create_loan_rejects_missing_or_blank_text_fields(field, value):
-    service = LoanService()
+def test_create_loan_rejects_missing_or_blank_text_fields(service, field, value):
 
     with pytest.raises(LoanValidationError) as error:
         service.create_loan(valid_payload(**{field: value}))
@@ -74,8 +80,7 @@ def test_create_loan_rejects_missing_or_blank_text_fields(field, value):
         ("repaymentAmount", "not-a-number"),
     ],
 )
-def test_create_loan_rejects_invalid_amounts(field, value):
-    service = LoanService()
+def test_create_loan_rejects_invalid_amounts(service, field, value):
 
     with pytest.raises(LoanValidationError) as error:
         service.create_loan(valid_payload(**{field: value}))
@@ -85,8 +90,7 @@ def test_create_loan_rejects_invalid_amounts(field, value):
     ]
 
 
-def test_create_loan_rejects_extra_fields():
-    service = LoanService()
+def test_create_loan_rejects_extra_fields(service):
 
     with pytest.raises(LoanValidationError) as error:
         service.create_loan(valid_payload(extraField="not allowed"))
@@ -96,8 +100,7 @@ def test_create_loan_rejects_extra_fields():
     ]
 
 
-def test_create_loan_rejects_duplicate_trimmed_case_sensitive_loan_id():
-    service = LoanService()
+def test_create_loan_rejects_duplicate_trimmed_case_sensitive_loan_id(service):
     service.create_loan(valid_payload(loanId="LN-001"))
 
     with pytest.raises(DuplicateLoanError) as error:
@@ -106,8 +109,7 @@ def test_create_loan_rejects_duplicate_trimmed_case_sensitive_loan_id():
     assert str(error.value) == "A loan with this loan ID already exists."
 
 
-def test_create_loan_allows_ids_that_differ_only_by_case():
-    service = LoanService()
+def test_create_loan_allows_ids_that_differ_only_by_case(service):
     first = service.create_loan(valid_payload(loanId="LN-001"))
     second = service.create_loan(valid_payload(loanId="ln-001"))
 
@@ -115,8 +117,7 @@ def test_create_loan_allows_ids_that_differ_only_by_case():
     assert second["loanId"] == "ln-001"
 
 
-def test_get_loan_returns_existing_record_after_trimming_loan_id():
-    service = LoanService()
+def test_get_loan_returns_existing_record_after_trimming_loan_id(service):
     created = service.create_loan(valid_payload(loanId="LN-LOOKUP"))
 
     found = service.get_loan("  LN-LOOKUP  ")
@@ -125,8 +126,7 @@ def test_get_loan_returns_existing_record_after_trimming_loan_id():
 
 
 @pytest.mark.parametrize("loan_id", ["LN-MISSING", "ln-001", "", "   "])
-def test_get_loan_rejects_missing_blank_or_case_mismatched_loan_id(loan_id):
-    service = LoanService()
+def test_get_loan_rejects_missing_blank_or_case_mismatched_loan_id(service, loan_id):
     service.create_loan(valid_payload(loanId="LN-001"))
 
     with pytest.raises(LoanNotFoundError) as error:
@@ -135,8 +135,56 @@ def test_get_loan_rejects_missing_blank_or_case_mismatched_loan_id(loan_id):
     assert str(error.value) == "No loan exists for this loan ID."
 
 
-def test_list_loans_returns_all_current_loans_with_trimmed_values_and_case_sensitive_ids():
-    service = LoanService()
+def test_delete_loan_returns_deleted_record_and_removes_only_trimmed_case_sensitive_match(
+    service,
+):
+    deleted = service.create_loan(valid_payload(loanId="LN-DELETE"))
+    case_different = service.create_loan(
+        valid_payload(
+            loanId="ln-delete",
+            borrowerName="Alex Doe",
+            fundingAmount=500.0,
+            repaymentAmount=650.0,
+        )
+    )
+
+    result = service.delete_loan("  LN-DELETE  ")
+
+    assert result == deleted
+    assert service.list_loans() == [case_different]
+    assert service.get_loan("ln-delete") == case_different
+    with pytest.raises(LoanNotFoundError):
+        service.get_loan("LN-DELETE")
+
+
+@pytest.mark.parametrize("loan_id", ["LN-MISSING", "ln-delete", "", "   "])
+def test_delete_loan_rejects_missing_blank_or_case_mismatched_loan_id(
+    service,
+    loan_id,
+):
+    current = service.create_loan(valid_payload(loanId="LN-DELETE"))
+
+    with pytest.raises(LoanNotFoundError) as error:
+        service.delete_loan(loan_id)
+
+    assert str(error.value) == "No loan exists for this loan ID."
+    assert service.list_loans() == [current]
+
+
+def test_delete_loan_rejects_already_deleted_loan_id(service):
+    service.create_loan(valid_payload(loanId="LN-DELETE"))
+    service.delete_loan("LN-DELETE")
+
+    with pytest.raises(LoanNotFoundError) as error:
+        service.delete_loan("LN-DELETE")
+
+    assert str(error.value) == "No loan exists for this loan ID."
+    assert service.list_loans() == []
+
+
+def test_list_loans_returns_all_current_loans_with_trimmed_values_and_case_sensitive_ids(
+    service,
+):
     first = service.create_loan(
         valid_payload(loanId="  LN-001  ", borrowerName="  Jane Smith  ")
     )
@@ -152,14 +200,14 @@ def test_list_loans_returns_all_current_loans_with_trimmed_values_and_case_sensi
     assert service.list_loans() == [first, second]
 
 
-def test_list_loans_returns_empty_list_for_new_service():
-    service = LoanService()
+def test_list_loans_returns_empty_list_for_new_service(service):
 
     assert service.list_loans() == []
 
 
-def test_list_loans_by_borrower_name_returns_matching_loans_with_trimmed_search_and_case_sensitive_matching():
-    service = LoanService()
+def test_list_loans_by_borrower_name_returns_matching_loans_with_trimmed_search_and_case_sensitive_matching(
+    service,
+):
     first = service.create_loan(valid_payload(loanId="LN-001"))
     service.create_loan(
         valid_payload(
@@ -189,16 +237,17 @@ def test_list_loans_by_borrower_name_returns_matching_loans_with_trimmed_search_
     assert service.list_loans_by_borrower_name("  Jane Smith  ") == [first, second]
 
 
-def test_list_loans_by_borrower_name_returns_empty_list_when_no_matches():
-    service = LoanService()
+def test_list_loans_by_borrower_name_returns_empty_list_when_no_matches(service):
     service.create_loan(valid_payload(loanId="LN-001"))
 
     assert service.list_loans_by_borrower_name("No Match") == []
 
 
 @pytest.mark.parametrize("borrower_name", ["", "   "])
-def test_list_loans_by_borrower_name_rejects_blank_search_terms(borrower_name):
-    service = LoanService()
+def test_list_loans_by_borrower_name_rejects_blank_search_terms(
+    service,
+    borrower_name,
+):
 
     with pytest.raises(LoanValidationError) as error:
         service.list_loans_by_borrower_name(borrower_name)

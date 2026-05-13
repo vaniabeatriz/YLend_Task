@@ -59,18 +59,16 @@ def test_get_loan_returns_not_found_for_unknown_loan_id(client):
     }
 
 
-def test_get_loan_returns_not_found_after_new_app_session():
-    first_client = create_app({"TESTING": True}).test_client()
-    restarted_client = create_app({"TESTING": True}).test_client()
+def test_get_loan_returns_persisted_record_after_new_app_session(tmp_path):
+    config = {"TESTING": True, "LOAN_DATABASE_PATH": str(tmp_path / "loans.sqlite3")}
+    first_client = create_app(config).test_client()
 
     created = first_client.post("/loans", json=valid_payload(loanId="LN-RESTART"))
     found_before_restart = first_client.get("/loans/LN-RESTART")
-    missing_after_restart = restarted_client.get("/loans/LN-RESTART")
+    restarted_client = create_app(config).test_client()
+    found_after_restart = restarted_client.get("/loans/LN-RESTART")
 
     assert created.status_code == 201
     assert found_before_restart.status_code == 200
-    assert missing_after_restart.status_code == 404
-    assert missing_after_restart.get_json() == {
-        "error": "loan_not_found",
-        "message": "No loan exists for this loan ID.",
-    }
+    assert found_after_restart.status_code == 200
+    assert found_after_restart.get_json()["loanId"] == "LN-RESTART"

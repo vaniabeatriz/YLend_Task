@@ -1,0 +1,85 @@
+openapi: 3.0.3
+info:
+  title: Loan Deletion API
+  version: 0.1.0
+  description: API contract for removing one current temporary loan by loan ID.
+servers:
+  - url: http://127.0.0.1:5000
+paths:
+  /loans/{loanId}:
+    delete:
+      summary: Delete a current loan
+      description: Removes one current loan by trimmed, case-sensitive loan ID and returns the deleted loan record.
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          description: Loan ID to delete. Surrounding whitespace is ignored before matching.
+          schema:
+            type: string
+          examples:
+            standard:
+              value: LN-001
+      responses:
+        "200":
+          description: Current loan deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+              examples:
+                deletedLoan:
+                  value:
+                    loanId: LN-001
+                    borrowerName: Jane Smith
+                    fundingAmount: 1000.0
+                    repaymentAmount: 1200.0
+        "404":
+          description: No current loan exists for this loan ID.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                loanNotFound:
+                  value:
+                    error: loan_not_found
+                    message: No loan exists for this loan ID.
+components:
+  schemas:
+    Loan:
+      type: object
+      required:
+        - loanId
+        - borrowerName
+        - fundingAmount
+        - repaymentAmount
+      additionalProperties: false
+      properties:
+        loanId:
+          type: string
+          example: LN-001
+        borrowerName:
+          type: string
+          example: Jane Smith
+        fundingAmount:
+          type: number
+          format: double
+          example: 1000.0
+        repaymentAmount:
+          type: number
+          format: double
+          example: 1200.0
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: loan_not_found
+        message:
+          type: string
+          example: No loan exists for this loan ID.

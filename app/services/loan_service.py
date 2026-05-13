@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from app.models.loan import Loan
+from app.repositories.loan_repository import LoanStorageError
 
 ALLOWED_FIELDS = {"loanId", "borrowerName", "fundingAmount", "repaymentAmount"}
 
@@ -12,16 +13,17 @@ class LoanValidationError(Exception):
 
 
 class DuplicateLoanError(Exception):
-    """Raised when a loan ID already exists in the current in-memory store."""
+    """Raised when a loan ID already exists in the current durable store."""
 
 
 class LoanNotFoundError(Exception):
-    """Raised when a loan ID is absent from the current in-memory store."""
+    """Raised when a loan ID is absent from the current durable store."""
 
 
 class LoanService:
-    def __init__(self):
-        self._loans = {}
+    def __init__(self, repository, storage_setup_error=None):
+        self._repository = repository
+        self._storage_setup_error = storage_setup_error
 
     def create_loan(self, payload):
         if not isinstance(payload, dict):
@@ -45,16 +47,15 @@ class LoanService:
         if details:
             raise LoanValidationError(details)
 
-        if loan_id in self._loans:
-            raise DuplicateLoanError("A loan with this loan ID already exists.")
-
         loan = Loan(
             loan_id=loan_id,
             borrower_name=borrower_name,
             funding_amount=funding_amount,
             repayment_amount=repayment_amount,
         )
-        self._loans[loan.loan_id] = loan
+        self._ensure_storage_ready()
+        if not self._repository.create(loan):
+            raise DuplicateLoanError("A loan with this loan ID already exists.")
         return loan.to_dict()
 
     def get_loan(self, loan_id):
@@ -62,13 +63,34 @@ class LoanService:
             raise LoanNotFoundError("No loan exists for this loan ID.")
 
         normalized_loan_id = loan_id.strip()
-        if not normalized_loan_id or normalized_loan_id not in self._loans:
+        if not normalized_loan_id:
             raise LoanNotFoundError("No loan exists for this loan ID.")
 
-        return self._loans[normalized_loan_id].to_dict()
+        self._ensure_storage_ready()
+        loan = self._repository.get(normalized_loan_id)
+        if loan is None:
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        return loan.to_dict()
+
+    def delete_loan(self, loan_id):
+        if not isinstance(loan_id, str):
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        normalized_loan_id = loan_id.strip()
+        if not normalized_loan_id:
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        self._ensure_storage_ready()
+        loan = self._repository.delete(normalized_loan_id)
+        if loan is None:
+            raise LoanNotFoundError("No loan exists for this loan ID.")
+
+        return loan.to_dict()
 
     def list_loans(self):
-        return [loan.to_dict() for loan in self._loans.values()]
+        self._ensure_storage_ready()
+        return [loan.to_dict() for loan in self._repository.list_all()]
 
     def list_loans_by_borrower_name(self, borrower_name):
         details = []
@@ -79,11 +101,15 @@ class LoanService:
         if details:
             raise LoanValidationError(details)
 
+        self._ensure_storage_ready()
         return [
             loan.to_dict()
-            for loan in self._loans.values()
-            if loan.borrower_name == normalized_borrower_name
+            for loan in self._repository.list_by_borrower_name(normalized_borrower_name)
         ]
+
+    def _ensure_storage_ready(self):
+        if self._storage_setup_error:
+            raise LoanStorageError(self._storage_setup_error)
 
     @staticmethod
     def _clean_required_text(value, field, details):
