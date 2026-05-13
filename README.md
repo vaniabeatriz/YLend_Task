@@ -1,40 +1,25 @@
 # Loan Management API and Website
 
-Small Flask implementation for the YouLend technical task. It provides a
-single-page local website plus authenticated JSON API operations for creating,
-looking up, listing, searching, and deleting loan records.
+Flask app for the YouLend technical task. It provides a small website and
+authenticated JSON API for creating, listing, searching, looking up, and
+deleting loan records.
 
-## Scope
+## Endpoints
 
-Included:
+- `GET /`
+- `GET /login`
+- `GET /callback`
+- `GET /logout`
+- `GET /auth/status`
+- `GET /health`
+- `POST /loans`
+- `GET /loans`
+- `GET /loans?borrowerName=<borrowerName>`
+- `GET /loans/<loanId>`
+- `DELETE /loans/<loanId>`
 
-- `GET http://127.0.0.1:5000/`
-- `GET http://127.0.0.1:5000/login`
-- `GET http://127.0.0.1:5000/callback`
-- `GET http://127.0.0.1:5000/logout`
-- `GET http://127.0.0.1:5000/auth/status`
-- `POST http://127.0.0.1:5000/loans`
-- `GET http://127.0.0.1:5000/loans`
-- `GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>`
-- `GET http://127.0.0.1:5000/loans/<loanId>`
-- `DELETE http://127.0.0.1:5000/loans/<loanId>`
-- `GET http://127.0.0.1:5000/health`
-- Auth0 sign-in for the website
-- Auth0 bearer-token protection for loan API endpoints
-- Responsive single-page browser workflow for create, list, borrower search,
-  loan ID lookup, and loan deletion
-- Durable local SQLite loan storage for local demos
-- RDS PostgreSQL storage for AWS ECS runtime
-- Docker image packaging for ECR/ECS
-- Minimal Terraform for ECR, ECS Fargate, ALB, and RDS demo deployment
-- pytest coverage gate at 80%
-
-Out of scope:
-
-- Kubernetes
-- Multi-region failover
-- Production compliance hardening
-- Roles or per-user loan ownership
+Loan endpoints require a valid Auth0 bearer token. `/`, `/login`, `/callback`,
+`/logout`, `/auth/status`, and `/health` are public.
 
 ## Setup
 
@@ -44,20 +29,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Auth0 Configuration
+## Auth0
 
-Create or select an Auth0 Regular Web Application and an Auth0 API.
+Create an Auth0 Regular Web Application and an Auth0 API.
 
-Set the Auth0 application URLs for local Flask:
+Local application URLs:
 
 - Allowed Callback URLs: `http://127.0.0.1:5000/callback`
 - Allowed Logout URLs: `http://127.0.0.1:5000/`
 - Allowed Web Origins: `http://127.0.0.1:5000`
 
-Set the Auth0 API signing algorithm to RS256 and use its identifier as the API
-audience.
+Use the Auth0 API `Identifier` as `AUTH0_AUDIENCE`.
 
-Create a local `.env` file or export these values before running Flask:
+Local environment:
 
 ```bash
 export AUTH0_DOMAIN="your-tenant.auth0.com"
@@ -69,45 +53,50 @@ export AUTH0_LOGOUT_RETURN_URL="http://127.0.0.1:5000/"
 export APP_SECRET_KEY="$(openssl rand -hex 32)"
 ```
 
-Local `.env` files are ignored by `.gitignore`. The app still starts without
-Auth0 values: `/health` and `/` remain public, while sign-in and protected API
-flows show setup guidance instead of exposing loan data.
+`.env` files are ignored by git.
 
-## Persistence Configuration
+## Storage
 
-Loans are stored in a local SQLite database so created records survive Flask app
-restarts. By default, the database lives in the Flask instance directory. For a
-predictable local demo path, set:
+Local runs use SQLite by default:
 
 ```bash
 export LOAN_DATABASE_PATH="instance/loans.sqlite3"
 ```
 
-The app prepares the database and loan table automatically on startup. To reset
-local demo data, stop Flask and remove the configured SQLite file.
-
-For AWS ECS, the app uses PostgreSQL when `DATABASE_URL` or
-`LOAN_DATABASE_URL` is configured. ECS should also set:
+AWS ECS uses PostgreSQL/RDS when `DATABASE_URL` or `LOAN_DATABASE_URL` is set.
+The ECS task also sets:
 
 ```bash
 LOAN_REQUIRE_DATABASE_URL=true
 ```
 
-That makes the deployed service fail closed instead of silently falling back to
-container-local SQLite.
+This prevents the deployed app from falling back to container-local SQLite.
 
-## Run
+## Run Locally
 
 ```bash
 flask --app app run --debug
 ```
 
-The website runs at `http://127.0.0.1:5000/`. The API runs from the same Flask
-app under the routes listed above.
+Open:
 
-## Container Build
+```text
+http://127.0.0.1:5000/
+```
 
-The Docker image runs the same Flask app with `gunicorn`:
+Health check:
+
+```bash
+curl -i http://127.0.0.1:5000/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+## Docker
 
 ```bash
 docker build -t yl-loans:local .
@@ -116,24 +105,26 @@ docker run --rm -p 5000:5000 \
   yl-loans:local
 ```
 
-For the real ECS deploy, use an ECR image URI instead of the local tag.
+If local port `5000` is busy:
 
-## AWS Deployment Overview
+```bash
+docker run --rm -p 5001:5000 \
+  -e LOAN_DATABASE_PATH=/tmp/loans.sqlite3 \
+  yl-loans:local
+```
 
-The AWS path is intentionally small:
+## AWS
 
-1. `infra/aws/bootstrap`: creates the ECR repository.
-2. Build and push a versioned image tag to ECR.
-3. `infra/aws/app`: creates ALB, ECS Fargate, RDS PostgreSQL, secrets, and logs.
-4. Add the deployed ALB URL to Auth0 callback/logout/web-origin settings.
-5. Run `/health`, then run the normal website demo flow.
+Infrastructure lives under `infra/aws`.
 
-Terraform local state, local variable files, plans, `.env` files, and local
-database files are ignored by `.gitignore`. Keep secrets in local
-`terraform.tfvars`, environment variables, or AWS Secrets Manager; do not commit
-them.
+- `infra/aws/bootstrap`: creates the ECR repository.
+- `infra/aws/app`: creates ALB, ECS Fargate, RDS PostgreSQL, Secrets Manager,
+  and CloudWatch logs.
 
-Bootstrap ECR:
+Local Terraform state, plans, `.env`, `terraform.tfvars`, and local databases
+are ignored by git.
+
+Create ECR:
 
 ```bash
 cd infra/aws/bootstrap
@@ -144,11 +135,11 @@ terraform apply \
   -var='environment=demo'
 ```
 
-Build and push:
+Build and push the image:
 
 ```bash
 export AWS_REGION=eu-west-2
-export ECR_REPOSITORY_URL="<terraform-output-ecr_repository_url>"
+export ECR_REPOSITORY_URL="<ecr_repository_url>"
 export IMAGE_TAG="$(git rev-parse --short HEAD)"
 
 aws ecr get-login-password --region "$AWS_REGION" \
@@ -159,7 +150,8 @@ docker tag "yl-loans:$IMAGE_TAG" "$ECR_REPOSITORY_URL:$IMAGE_TAG"
 docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
 ```
 
-Deploy app/RDS:
+Create `infra/aws/app/terraform.tfvars` locally with the required image URI,
+Auth0 values, and secrets. Then deploy:
 
 ```bash
 cd ../app
@@ -167,23 +159,24 @@ terraform init
 terraform apply
 ```
 
-Use a local `terraform.tfvars` file in `infra/aws/app/` for `image_uri`,
-Auth0 values, and secrets. That file is ignored by git.
-
-After apply, use the `service_url` output in Auth0:
+After deployment, add the `service_url` output to the Auth0 application:
 
 - Allowed Callback URLs: `<service_url>/callback`
 - Allowed Logout URLs: `<service_url>/`
 - Allowed Web Origins: `<service_url>`
 
-Smoke test:
+Check the deployed app:
 
 ```bash
 curl -i "<service_url>/health"
 ```
 
-To prove RDS persistence, create a loan, force a new ECS deployment, then look
-up the same loan again:
+## Persistence Check
+
+1. Sign in on the deployed site.
+2. Create loan `LN-AWS-001`.
+3. Confirm it appears in list, borrower search, and loan ID lookup.
+4. Force a new ECS deployment:
 
 ```bash
 aws ecs update-service \
@@ -193,407 +186,28 @@ aws ecs update-service \
   --region "$AWS_REGION"
 ```
 
-## Website Demo Flow
+5. Wait for the service to stabilize.
+6. Confirm `LN-AWS-001` is still available.
 
-Open `http://127.0.0.1:5000/` in a browser.
+That verifies loan data is stored in RDS, not in the ECS task.
 
-1. Confirm the signed-out page shows a sign-in action and hides create, list,
-   borrower search, loan lookup, and delete workflows.
-2. Sign in with Auth0.
-3. Confirm the signed-in page shows the action buttons: Create loan, List
-   loans, Search borrower, Look up loan, Delete loan, and Health check.
-4. Create loan `LN-001` for borrower `Jane Smith` with funding amount `1000.0`
-   and repayment amount `1200.0`.
-5. Confirm the success message identifies `LN-001` and the current loans list
-   includes it.
-6. Create `LN-001` again and confirm duplicate-loan feedback appears while the
-   entered values remain available for correction.
-7. Search borrower name `Jane Smith`, then search `No Match` and confirm the
-   empty-result state.
-8. Look up loan ID `LN-001`, then look up `LN-MISSING` and confirm not-found
-   feedback.
-9. Delete loan ID `LN-001`, then delete it again and confirm the deleted-loan
-   confirmation followed by not-found feedback.
-10. Sign out and confirm loan workflows are hidden again.
-11. Resize the browser to a mobile-sized width and confirm forms, buttons,
-   result rows, and feedback remain readable without horizontal scrolling.
-
-Primary success and error feedback is expected to appear within 2 seconds in
-local usage. If the Flask app is stopped while the page is open, the next action
-shows service-unavailable feedback and keeps entered values available for retry.
-
-## Health Check
-
-Health stays public:
-
-```bash
-curl http://127.0.0.1:5000/health
-```
-
-Expected response:
-
-```json
-{
-  "status": "ok"
-}
-```
-
-## Protected API Authentication
-
-Requests to loan endpoints without an Auth0 access token fail with `401`
-JSON and no loan data:
-
-```bash
-curl -i http://127.0.0.1:5000/loans
-```
-
-Expected result:
-
-```json
-{
-  "error": "authentication_required",
-  "message": "A valid Auth0 access token is required."
-}
-```
-
-After signing in, obtain a valid Auth0 access token for the configured API
-audience. Use it as `TOKEN`:
-
-```bash
-export TOKEN="paste-auth0-access-token-here"
-```
-
-All `/loans` examples below require this header:
-
-```bash
--H "Authorization: Bearer $TOKEN"
-```
-
-## Demo: Empty Loan List
-
-```bash
-curl -i http://127.0.0.1:5000/loans \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `200 OK` with an empty collection when no loans exist:
-
-```json
-{
-  "loans": []
-}
-```
-
-## Demo: Create a Loan
-
-```bash
-curl -i -X POST http://127.0.0.1:5000/loans \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "loanId": "LN-001",
-    "borrowerName": "Jane Smith",
-    "fundingAmount": 1000.0,
-    "repaymentAmount": 1200.0
-  }'
-```
-
-Expected result: `201 Created` with the stored loan record:
-
-```json
-{
-  "borrowerName": "Jane Smith",
-  "fundingAmount": 1000.0,
-  "loanId": "LN-001",
-  "repaymentAmount": 1200.0
-}
-```
-
-## Demo: Duplicate Loan
-
-Run the same authenticated create request again.
-
-Expected result: `409 Conflict`:
-
-```json
-{
-  "error": "duplicate_loan_id",
-  "message": "A loan with this loan ID already exists."
-}
-```
-
-## Demo: Look Up a Loan
-
-```bash
-curl -i http://127.0.0.1:5000/loans/LN-001 \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `200 OK` with the stored loan record:
-
-```json
-{
-  "borrowerName": "Jane Smith",
-  "fundingAmount": 1000.0,
-  "loanId": "LN-001",
-  "repaymentAmount": 1200.0
-}
-```
-
-## Demo: List Current Loans
-
-```bash
-curl -i http://127.0.0.1:5000/loans \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `200 OK` with the current loan collection:
-
-```json
-{
-  "loans": [
-    {
-      "borrowerName": "Jane Smith",
-      "fundingAmount": 1000.0,
-      "loanId": "LN-001",
-      "repaymentAmount": 1200.0
-    }
-  ]
-}
-```
-
-## Demo: Look Up Loans By Borrower Name
-
-```bash
-curl -i "http://127.0.0.1:5000/loans?borrowerName=Jane%20Smith" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `200 OK` with current loans for that borrower:
-
-```json
-{
-  "loans": [
-    {
-      "borrowerName": "Jane Smith",
-      "fundingAmount": 1000.0,
-      "loanId": "LN-001",
-      "repaymentAmount": 1200.0
-    }
-  ]
-}
-```
-
-## Demo: No Borrower Matches
-
-```bash
-curl -i "http://127.0.0.1:5000/loans?borrowerName=No%20Match" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `200 OK` with an empty collection:
-
-```json
-{
-  "loans": []
-}
-```
-
-## Demo: Blank Borrower Name Lookup
-
-```bash
-curl -i "http://127.0.0.1:5000/loans?borrowerName=" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `400 Bad Request`:
-
-```json
-{
-  "details": [
-    {
-      "field": "borrowerName",
-      "message": "borrowerName is required."
-    }
-  ],
-  "error": "validation_error",
-  "message": "borrowerName is required."
-}
-```
-
-## Demo: Delete a Loan
-
-```bash
-curl -i -X DELETE http://127.0.0.1:5000/loans/LN-001 \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `200 OK` with the deleted loan record:
-
-```json
-{
-  "borrowerName": "Jane Smith",
-  "fundingAmount": 1000.0,
-  "loanId": "LN-001",
-  "repaymentAmount": 1200.0
-}
-```
-
-After deletion, lookup and listing workflows no longer include `LN-001`:
-
-```bash
-curl -i http://127.0.0.1:5000/loans/LN-001 \
-  -H "Authorization: Bearer $TOKEN"
-curl -i http://127.0.0.1:5000/loans \
-  -H "Authorization: Bearer $TOKEN"
-curl -i "http://127.0.0.1:5000/loans?borrowerName=Jane%20Smith" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected results: loan ID lookup returns `404 Not Found`; full listing and
-borrower-name lookup return `200 OK` without the deleted loan.
-
-## Demo: Already Deleted or Missing Loan
-
-```bash
-curl -i -X DELETE http://127.0.0.1:5000/loans/LN-001 \
-  -H "Authorization: Bearer $TOKEN"
-curl -i -X DELETE http://127.0.0.1:5000/loans/LN-MISSING \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result for each request: `404 Not Found`:
-
-```json
-{
-  "error": "loan_not_found",
-  "message": "No loan exists for this loan ID."
-}
-```
-
-## Demo: Missing Loan Lookup
-
-```bash
-curl -i http://127.0.0.1:5000/loans/LN-MISSING \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-Expected result: `404 Not Found`:
-
-```json
-{
-  "error": "loan_not_found",
-  "message": "No loan exists for this loan ID."
-}
-```
-
-## Demo: Restart Behavior
-
-Stop the Flask server with `Ctrl-C`, start it again, sign in, and list or
-delete loans before creating another record. You can also run the borrower-name
-lookup request.
-
-Expected result after restart with the same `LOAN_DATABASE_PATH`: lookup,
-listing, and borrower-name search still include loans created before restart.
-Deleting a loan removes it from the SQLite database, so it remains absent after
-later restarts. Running the same create request again for an existing loan ID
-returns `409 Conflict`.
-
-## Demo: Validation Error
-
-```bash
-curl -i -X POST http://127.0.0.1:5000/loans \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "loanId": "LN-002",
-    "borrowerName": "Jane Smith",
-    "fundingAmount": 0,
-    "repaymentAmount": 1200.0
-  }'
-```
-
-Expected result: `400 Bad Request`:
-
-```json
-{
-  "details": [
-    {
-      "field": "fundingAmount",
-      "message": "fundingAmount must be greater than 0."
-    }
-  ],
-  "error": "validation_error",
-  "message": "Loan could not be created because one or more fields are invalid."
-}
-```
-
-## Test
+## Tests
 
 ```bash
 pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 ```
 
-Expected result: all tests pass and statement coverage is at least 80%.
-
 Latest local result: `128 passed`; total coverage `86.89%`.
 
 ## Architecture
 
-- `app/auth.py`: Auth0 configuration, login/logout helpers, JWT validation,
-  session handling, and auth error responses.
-- `app/routes.py`: HTTP routes, request parsing, auth gates, and JSON
-  responses.
-- `app/repositories/loan_repository.py`: SQLite schema initialization and
-  durable loan storage.
-- `app/repositories/postgres_loan_repository.py`: PostgreSQL/RDS schema
-  initialization and durable loan storage.
-- `app/repositories/repository_factory.py`: runtime storage selection for local
-  SQLite vs deployed PostgreSQL.
-- `app/templates/index.html`: single-page browser website.
-- `app/static/loan_website.css`: responsive website styling.
-- `app/static/loan_website.js`: browser Fetch API workflow handling and
-  authenticated request headers.
-- `app/models/loan.py`: immutable loan data shape and JSON serialization.
-- `app/services/loan_service.py`: validation, normalization, duplicate checks,
-  Decimal parsing, lookup, listing, borrower-name search, deletion, and
-  repository coordination.
-- `Dockerfile`: production-style container startup with `gunicorn`.
-- `infra/aws/bootstrap/`: ECR repository for application images.
-- `infra/aws/app/`: ECS Fargate, ALB, RDS PostgreSQL, secrets, and logs.
-- `tests/unit/`: repository, service-level validation, storage, and auth tests.
-- `tests/integration/`: Flask API, website, auth, and documentation smoke
-  tests.
-
-## Trade-Offs and Assumptions
-
-- Loan IDs are caller-supplied, trimmed before storage, and case-sensitive.
-- Lookup uses the same trimmed, case-sensitive loan ID rules as creation.
-- Deletion uses trimmed, case-sensitive loan ID matching and returns the deleted
-  loan record.
-- Deleted loans are removed from loan ID lookup, borrower-name lookup, and full
-  listing.
-- Listing returns all current loans in storage order without sorting controls.
-- Borrower names are trimmed before storage.
-- Borrower-name lookup trims the search term and matches stored borrower names
-  exactly and case-sensitively.
-- A missing `borrowerName` query lists all current loans; a blank `borrowerName`
-  query is rejected as validation error.
-- Funding and repayment amounts must be valid monetary values greater than 0.
-- Amounts are parsed with `Decimal` internally, stored as decimal text in
-  SQLite, and returned as JSON numbers.
-- SQLite storage is local to the configured database path and survives Flask app
-  restarts using that same path.
-- RDS PostgreSQL storage is used when `DATABASE_URL` or `LOAN_DATABASE_URL` is
-  configured.
-- ECS runtime sets `LOAN_REQUIRE_DATABASE_URL=true` so missing RDS configuration
-  returns service-unavailable feedback instead of using SQLite.
-- Auth0 login and JWT verification are mocked in automated tests so the suite
-  does not require live Auth0 credentials or network access.
-- The website reads the Auth0 access token from authenticated status for local
-  same-origin API calls; deeper production token/session hardening is out of
-  scope for the demo deployment.
-- Missing Auth0 configuration is reported through setup guidance while public
-  routes remain available.
-- The AWS deployment is a single non-production demo environment, not a
-  high-availability production architecture.
+- `app/auth.py`: Auth0 login, logout, sessions, and token validation.
+- `app/routes.py`: Flask routes and JSON responses.
+- `app/services/loan_service.py`: validation and loan workflow rules.
+- `app/repositories/loan_repository.py`: SQLite repository.
+- `app/repositories/postgres_loan_repository.py`: PostgreSQL/RDS repository.
+- `app/repositories/repository_factory.py`: runtime storage selection.
+- `app/templates/index.html`: website.
+- `app/static/`: website CSS and JavaScript.
+- `infra/aws/`: Terraform for ECR, ECS, ALB, RDS, secrets, and logs.
+- `tests/`: unit and integration tests.

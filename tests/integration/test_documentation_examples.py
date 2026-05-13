@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_readme_documents_core_commands_and_demo_flow():
+def test_readme_documents_core_commands_and_aws_flow():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "pip install -r requirements.txt" in readme
@@ -15,16 +15,13 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "AUTH0_CLIENT_SECRET" in readme
     assert "AUTH0_AUDIENCE" in readme
     assert "APP_SECRET_KEY" in readme
-    assert ".env` files are ignored by `.gitignore`" in readme
-    assert "Persistence Configuration" in readme
+    assert ".env` files are ignored by git" in readme
     assert "LOAN_DATABASE_PATH" in readme
     assert "DATABASE_URL" in readme
     assert "LOAN_REQUIRE_DATABASE_URL=true" in readme
     assert "instance/loans.sqlite3" in readme
     assert "SQLite" in readme
-    assert "RDS PostgreSQL" in readme
-    assert "Dockerfile" in readme
-    assert "gunicorn" in readme
+    assert "PostgreSQL/RDS" in readme
     assert "infra/aws/bootstrap" in readme
     assert "infra/aws/app" in readme
     assert "terraform apply" in readme
@@ -32,55 +29,25 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "service_url" in readme
     assert "ecs_cluster_name" in readme
     assert "ecs_service_name" in readme
-    assert "survive Flask app" in readme
-    assert "curl http://127.0.0.1:5000/health" in readme
-    assert "GET http://127.0.0.1:5000/" in readme
-    assert "GET http://127.0.0.1:5000/login" in readme
-    assert "GET http://127.0.0.1:5000/logout" in readme
-    assert "GET http://127.0.0.1:5000/auth/status" in readme
-    assert "POST http://127.0.0.1:5000/loans" in readme
-    assert "GET http://127.0.0.1:5000/loans" in readme
-    assert "GET http://127.0.0.1:5000/loans?borrowerName=<borrowerName>" in readme
-    assert "GET http://127.0.0.1:5000/loans/<loanId>" in readme
-    assert "DELETE http://127.0.0.1:5000/loans/<loanId>" in readme
-    assert "Auth0 sign-in for the website" in readme
-    assert "Auth0 bearer-token protection for loan API endpoints" in readme
-    assert "Protected API Authentication" in readme
-    assert '"authentication_required"' in readme
-    assert '-H "Authorization: Bearer $TOKEN"' in readme
-    assert readme.count('-H "Authorization: Bearer $TOKEN"') >= 10
-    assert "Website Demo Flow" in readme
-    assert "Open `http://127.0.0.1:5000/` in a browser." in readme
-    assert "Sign in with Auth0." in readme
-    assert "without horizontal scrolling" in readme
-    assert "within 2 seconds" in readme
-    assert "service-unavailable feedback" in readme
+    assert "GET /" in readme
+    assert "GET /login" in readme
+    assert "GET /auth/status" in readme
+    assert "POST /loans" in readme
+    assert "GET /loans?borrowerName=<borrowerName>" in readme
+    assert "DELETE /loans/<loanId>" in readme
+    assert "curl -i http://127.0.0.1:5000/health" in readme
+    assert "docker build -t yl-loans:local ." in readme
+    assert "docker push" in readme
     assert "app/auth.py" in readme
     assert "app/repositories/loan_repository.py" in readme
-    assert "app/templates/index.html" in readme
-    assert "app/static/loan_website.css" in readme
-    assert "app/static/loan_website.js" in readme
-    assert "curl -i http://127.0.0.1:5000/loans" in readme
-    assert 'curl -i "http://127.0.0.1:5000/loans?borrowerName=Jane%20Smith"' in readme
-    assert 'curl -i "http://127.0.0.1:5000/loans?borrowerName=No%20Match"' in readme
-    assert "curl -i http://127.0.0.1:5000/loans/LN-001" in readme
-    assert "curl -i -X DELETE http://127.0.0.1:5000/loans/LN-001" in readme
-    assert "curl -i -X DELETE http://127.0.0.1:5000/loans/LN-MISSING" in readme
-    assert '"loans": []' in readme
-    assert "borrowerName is required." in readme
-    assert "404 Not Found" in readme
-    assert "409 Conflict" in readme
-    assert "400 Bad Request" in readme
-    assert "Restart Behavior" in readme
-    assert "same `LOAN_DATABASE_PATH`" in readme
-    assert "remains absent after" in readme
-    assert "201 Created" in readme
+    assert "app/repositories/postgres_loan_repository.py" in readme
+    assert "app/repositories/repository_factory.py" in readme
     assert "aws ecs update-service" in readme
     assert "force-new-deployment" in readme
-    assert "Terraform local state" in readme
-    assert "Auth0 or authentication" not in readme
+    assert "Trade-Offs and Assumptions" not in readme
+    assert "Out of scope" not in readme
+    assert "Demo:" not in readme
     assert "process-local" not in readme
-    assert "resets when the application starts again" not in readme
 
 
 def test_aws_deployment_contract_documents_required_runtime_and_outputs():
