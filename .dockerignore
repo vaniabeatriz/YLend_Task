@@ -1,0 +1,35 @@
+.git
+.gitignore
+.dockerignore
+
+# Local Python/runtime artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local configuration and storage
+.env
+.env.*
+instance/
+*.sqlite
+*.sqlite3
+*.db
+
+# Terraform state and local AWS values are not part of the app image.
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/*.tfplan
+infra/**/terraform.tfvars
+infra/**/*.auto.tfvars
+
+# Editor/OS noise
+.DS_Store
+.vscode/
+.idea/

@@ -24,13 +24,17 @@ Included:
 - Responsive single-page browser workflow for create, list, borrower search,
   loan ID lookup, and loan deletion
 - Durable local SQLite loan storage for local demos
+- RDS PostgreSQL storage for AWS ECS runtime
+- Docker image packaging for ECR/ECS
+- Minimal Terraform for ECR, ECS Fargate, ALB, and RDS demo deployment
 - pytest coverage gate at 80%
 
 Out of scope:
 
-- Public exposure
-- Container registry work
-- Cloud or Kubernetes deployment
+- Kubernetes
+- Multi-region failover
+- Production compliance hardening
+- Roles or per-user loan ownership
 
 ## Setup
 
@@ -82,6 +86,16 @@ export LOAN_DATABASE_PATH="instance/loans.sqlite3"
 The app prepares the database and loan table automatically on startup. To reset
 local demo data, stop Flask and remove the configured SQLite file.
 
+For AWS ECS, the app uses PostgreSQL when `DATABASE_URL` or
+`LOAN_DATABASE_URL` is configured. ECS should also set:
+
+```bash
+LOAN_REQUIRE_DATABASE_URL=true
+```
+
+That makes the deployed service fail closed instead of silently falling back to
+container-local SQLite.
+
 ## Run
 
 ```bash
@@ -90,6 +104,94 @@ flask --app app run --debug
 
 The website runs at `http://127.0.0.1:5000/`. The API runs from the same Flask
 app under the routes listed above.
+
+## Container Build
+
+The Docker image runs the same Flask app with `gunicorn`:
+
+```bash
+docker build -t yl-loans:local .
+docker run --rm -p 5000:5000 \
+  -e LOAN_DATABASE_PATH=/tmp/loans.sqlite3 \
+  yl-loans:local
+```
+
+For the real ECS deploy, use an ECR image URI instead of the local tag.
+
+## AWS Deployment Overview
+
+The AWS path is intentionally small:
+
+1. `infra/aws/bootstrap`: creates the ECR repository.
+2. Build and push a versioned image tag to ECR.
+3. `infra/aws/app`: creates ALB, ECS Fargate, RDS PostgreSQL, secrets, and logs.
+4. Add the deployed ALB URL to Auth0 callback/logout/web-origin settings.
+5. Run `/health`, then run the normal website demo flow.
+
+Terraform local state, local variable files, plans, `.env` files, and local
+database files are ignored by `.gitignore`. Keep secrets in local
+`terraform.tfvars`, environment variables, or AWS Secrets Manager; do not commit
+them.
+
+Bootstrap ECR:
+
+```bash
+cd infra/aws/bootstrap
+terraform init
+terraform apply \
+  -var='aws_region=eu-west-2' \
+  -var='project_name=yl-loans' \
+  -var='environment=demo'
+```
+
+Build and push:
+
+```bash
+export AWS_REGION=eu-west-2
+export ECR_REPOSITORY_URL="<terraform-output-ecr_repository_url>"
+export IMAGE_TAG="$(git rev-parse --short HEAD)"
+
+aws ecr get-login-password --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URL"
+
+docker build -t "yl-loans:$IMAGE_TAG" .
+docker tag "yl-loans:$IMAGE_TAG" "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+```
+
+Deploy app/RDS:
+
+```bash
+cd ../app
+terraform init
+terraform apply
+```
+
+Use a local `terraform.tfvars` file in `infra/aws/app/` for `image_uri`,
+Auth0 values, and secrets. That file is ignored by git.
+
+After apply, use the `service_url` output in Auth0:
+
+- Allowed Callback URLs: `<service_url>/callback`
+- Allowed Logout URLs: `<service_url>/`
+- Allowed Web Origins: `<service_url>`
+
+Smoke test:
+
+```bash
+curl -i "<service_url>/health"
+```
+
+To prove RDS persistence, create a loan, force a new ECS deployment, then look
+up the same loan again:
+
+```bash
+aws ecs update-service \
+  --cluster "<ecs_cluster_name>" \
+  --service "<ecs_service_name>" \
+  --force-new-deployment \
+  --region "$AWS_REGION"
+```
 
 ## Website Demo Flow
 
@@ -434,7 +536,7 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 
 Expected result: all tests pass and statement coverage is at least 80%.
 
-Latest local result: `115 passed`; total coverage `87.65%`.
+Latest local result: `128 passed`; total coverage `86.89%`.
 
 ## Architecture
 
@@ -444,6 +546,10 @@ Latest local result: `115 passed`; total coverage `87.65%`.
   responses.
 - `app/repositories/loan_repository.py`: SQLite schema initialization and
   durable loan storage.
+- `app/repositories/postgres_loan_repository.py`: PostgreSQL/RDS schema
+  initialization and durable loan storage.
+- `app/repositories/repository_factory.py`: runtime storage selection for local
+  SQLite vs deployed PostgreSQL.
 - `app/templates/index.html`: single-page browser website.
 - `app/static/loan_website.css`: responsive website styling.
 - `app/static/loan_website.js`: browser Fetch API workflow handling and
@@ -452,6 +558,9 @@ Latest local result: `115 passed`; total coverage `87.65%`.
 - `app/services/loan_service.py`: validation, normalization, duplicate checks,
   Decimal parsing, lookup, listing, borrower-name search, deletion, and
   repository coordination.
+- `Dockerfile`: production-style container startup with `gunicorn`.
+- `infra/aws/bootstrap/`: ECR repository for application images.
+- `infra/aws/app/`: ECS Fargate, ALB, RDS PostgreSQL, secrets, and logs.
 - `tests/unit/`: repository, service-level validation, storage, and auth tests.
 - `tests/integration/`: Flask API, website, auth, and documentation smoke
   tests.
@@ -475,11 +584,16 @@ Latest local result: `115 passed`; total coverage `87.65%`.
   SQLite, and returned as JSON numbers.
 - SQLite storage is local to the configured database path and survives Flask app
   restarts using that same path.
+- RDS PostgreSQL storage is used when `DATABASE_URL` or `LOAN_DATABASE_URL` is
+  configured.
+- ECS runtime sets `LOAN_REQUIRE_DATABASE_URL=true` so missing RDS configuration
+  returns service-unavailable feedback instead of using SQLite.
 - Auth0 login and JWT verification are mocked in automated tests so the suite
   does not require live Auth0 credentials or network access.
 - The website reads the Auth0 access token from authenticated status for local
-  same-origin API calls; production token/session hardening is deferred with
-  public deployment.
+  same-origin API calls; deeper production token/session hardening is out of
+  scope for the demo deployment.
 - Missing Auth0 configuration is reported through setup guidance while public
   routes remain available.
-- Local Flask deployment is enough for this slice.
+- The AWS deployment is a single non-production demo environment, not a
+  high-availability production architecture.

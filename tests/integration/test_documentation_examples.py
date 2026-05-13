@@ -18,8 +18,20 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert ".env` files are ignored by `.gitignore`" in readme
     assert "Persistence Configuration" in readme
     assert "LOAN_DATABASE_PATH" in readme
+    assert "DATABASE_URL" in readme
+    assert "LOAN_REQUIRE_DATABASE_URL=true" in readme
     assert "instance/loans.sqlite3" in readme
     assert "SQLite" in readme
+    assert "RDS PostgreSQL" in readme
+    assert "Dockerfile" in readme
+    assert "gunicorn" in readme
+    assert "infra/aws/bootstrap" in readme
+    assert "infra/aws/app" in readme
+    assert "terraform apply" in readme
+    assert "ecr_repository_url" in readme
+    assert "service_url" in readme
+    assert "ecs_cluster_name" in readme
+    assert "ecs_service_name" in readme
     assert "survive Flask app" in readme
     assert "curl http://127.0.0.1:5000/health" in readme
     assert "GET http://127.0.0.1:5000/" in readme
@@ -63,9 +75,49 @@ def test_readme_documents_core_commands_and_demo_flow():
     assert "same `LOAN_DATABASE_PATH`" in readme
     assert "remains absent after" in readme
     assert "201 Created" in readme
+    assert "aws ecs update-service" in readme
+    assert "force-new-deployment" in readme
+    assert "Terraform local state" in readme
     assert "Auth0 or authentication" not in readme
     assert "process-local" not in readme
     assert "resets when the application starts again" not in readme
+
+
+def test_aws_deployment_contract_documents_required_runtime_and_outputs():
+    contract = (
+        ROOT
+        / "specs"
+        / "011-aws-ecs-rds-deploy"
+        / "contracts"
+        / "deployment-config.md"
+    ).read_text(encoding="utf-8")
+    quickstart = (
+        ROOT / "specs" / "011-aws-ecs-rds-deploy" / "quickstart.md"
+    ).read_text(encoding="utf-8")
+
+    for required in (
+        "DATABASE_URL",
+        "AUTH0_DOMAIN",
+        "AUTH0_CLIENT_ID",
+        "AUTH0_CLIENT_SECRET",
+        "AUTH0_AUDIENCE",
+        "APP_SECRET_KEY",
+        "LOAN_REQUIRE_DATABASE_URL",
+        "image_uri",
+        "service_url",
+        "ecs_cluster_name",
+        "ecs_service_name",
+        "rds_endpoint",
+    ):
+        assert required in contract
+
+    assert "terraform.tfvars" in quickstart
+    assert "docker build" in quickstart
+    assert "docker push" in quickstart
+    assert "terraform apply" in quickstart
+    assert "terraform destroy" in quickstart
+    assert "aws ecs update-service" in quickstart
+    assert "force-new-deployment" in quickstart
 
 
 def test_loan_website_quickstart_documents_browser_demo_and_validation():

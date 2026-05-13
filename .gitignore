@@ -26,6 +26,25 @@ instance/
 *.tmp
 *.swp
 
+# Docker/local runtime noise
+*.log
+
+# Terraform local state, plans, and machine-specific values.
+# Keep .tf source files in git; ignore generated or secret-bearing files.
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
 # Editors
 .vscode/
 .idea/

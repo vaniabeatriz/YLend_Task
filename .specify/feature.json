@@ -1,3 +1,3 @@
 {
-  "feature_directory": "specs/010-durable-loan-persistence"
+  "feature_directory": "specs/011-aws-ecs-rds-deploy"
 }

@@ -146,6 +146,59 @@ def test_app_startup_initializes_unused_database_path(database_path, auth_header
     assert response.get_json() == {"loans": []}
 
 
+def test_app_factory_uses_configured_database_url_repository(
+    make_protected_app,
+    auth_headers,
+    monkeypatch,
+):
+    created_repositories = []
+
+    class CapturingPostgresRepository:
+        def __init__(self, database_url):
+            self.database_url = database_url
+            created_repositories.append(self)
+
+        def initialize(self):
+            self.initialized = True
+
+        def list_all(self):
+            return []
+
+    monkeypatch.setattr(
+        "app.repositories.repository_factory.PostgresLoanRepository",
+        CapturingPostgresRepository,
+    )
+
+    client = make_protected_app(
+        LOAN_DATABASE_PATH=None,
+        LOAN_DATABASE_URL="postgresql://example/db",
+    ).test_client()
+    response = client.get("/loans", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.get_json() == {"loans": []}
+    assert created_repositories[0].database_url == "postgresql://example/db"
+    assert created_repositories[0].initialized is True
+
+
+def test_deployed_runtime_without_database_url_returns_storage_error(
+    make_protected_app,
+    auth_headers,
+):
+    client = make_protected_app(
+        LOAN_DATABASE_PATH=None,
+        LOAN_REQUIRE_DATABASE_URL=True,
+    ).test_client()
+
+    response = client.get("/loans", headers=auth_headers)
+
+    assert response.status_code == 503
+    assert response.get_json() == {
+        "error": "loan_storage_unavailable",
+        "message": "Loan storage is unavailable. Check local persistence setup and retry.",
+    }
+
+
 class FailingLoanRepository:
     def initialize(self):
         return None
