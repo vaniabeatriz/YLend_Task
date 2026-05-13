@@ -5,6 +5,10 @@ __pycache__/
 dist/
 build/
 
+# Local agent/spec tooling
+.agents/
+.specify/
+
 # Virtual environments
 .venv/
 venv/
