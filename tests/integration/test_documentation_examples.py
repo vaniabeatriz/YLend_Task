@@ -27,8 +27,6 @@ def test_readme_documents_core_commands_and_aws_flow():
     assert "terraform apply" in readme
     assert "ecr_repository_url" in readme
     assert "service_url" in readme
-    assert "ecs_cluster_name" in readme
-    assert "ecs_service_name" in readme
     assert "GET /" in readme
     assert "GET /login" in readme
     assert "GET /auth/status" in readme
@@ -42,11 +40,11 @@ def test_readme_documents_core_commands_and_aws_flow():
     assert "app/repositories/loan_repository.py" in readme
     assert "app/repositories/postgres_loan_repository.py" in readme
     assert "app/repositories/repository_factory.py" in readme
-    assert "aws ecs update-service" in readme
-    assert "force-new-deployment" in readme
     assert "Trade-Offs and Assumptions" not in readme
     assert "Out of scope" not in readme
     assert "Demo:" not in readme
+    assert "Persistence Check" not in readme
+    assert "Latest local result" not in readme
     assert "process-local" not in readme
 
 

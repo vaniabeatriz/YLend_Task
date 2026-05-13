@@ -105,14 +105,6 @@ docker run --rm -p 5000:5000 \
   yl-loans:local
 ```
 
-If local port `5000` is busy:
-
-```bash
-docker run --rm -p 5001:5000 \
-  -e LOAN_DATABASE_PATH=/tmp/loans.sqlite3 \
-  yl-loans:local
-```
-
 ## AWS
 
 Infrastructure lives under `infra/aws`.
@@ -171,33 +163,11 @@ Check the deployed app:
 curl -i "<service_url>/health"
 ```
 
-## Persistence Check
-
-1. Sign in on the deployed site.
-2. Create loan `LN-AWS-001`.
-3. Confirm it appears in list, borrower search, and loan ID lookup.
-4. Force a new ECS deployment:
-
-```bash
-aws ecs update-service \
-  --cluster "<ecs_cluster_name>" \
-  --service "<ecs_service_name>" \
-  --force-new-deployment \
-  --region "$AWS_REGION"
-```
-
-5. Wait for the service to stabilize.
-6. Confirm `LN-AWS-001` is still available.
-
-That verifies loan data is stored in RDS, not in the ECS task.
-
 ## Tests
 
 ```bash
 pytest --cov=app --cov-report=term-missing --cov-fail-under=80
 ```
-
-Latest local result: `128 passed`; total coverage `86.89%`.
 
 ## Architecture
 
