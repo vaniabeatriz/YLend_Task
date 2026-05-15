@@ -309,6 +309,31 @@ data are used. The expected production change would be:
 6. Update Auth0 callback, logout, and web origin URLs to use `https://`.
 7. Set secure session cookie settings for the HTTPS environment.
 
+## CI/CD Scope
+
+This repository does not include an automated CI/CD pipeline. The current
+deployment path is intentionally manual and repeatable: run tests locally, build
+and push the Docker image, then apply Terraform.
+
+A simple CI/CD setup would likely use GitHub Actions:
+
+1. Run CI on every pull request and push.
+2. Install Python dependencies.
+3. Run the pytest coverage command.
+4. Build the Docker image to verify the container still builds.
+5. On an approved deploy, authenticate to AWS.
+6. Push a commit-tagged image to ECR.
+7. Run Terraform to update ECS with the new image URI.
+
+For Terraform to run safely from CI/CD, the project would also need remote
+Terraform state, normally an S3 bucket with state locking through DynamoDB. The
+current Terraform setup uses local state, which is fine for a small manual demo
+but is not suitable for an automated pipeline because CI runners are temporary
+and multiple runs need a shared source of truth for infrastructure state.
+
+For a production-style pipeline, AWS authentication should use GitHub Actions
+OIDC and an assumable AWS role, not long-lived AWS access keys stored in GitHub.
+
 ## AWS Step 1: Create ECR
 
 ```bash
