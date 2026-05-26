@@ -103,13 +103,96 @@ Create or reuse:
 - An Auth0 Regular Web Application for browser login.
 - An Auth0 API for validating access tokens.
 
-In the Auth0 application, add these local URLs:
+In the Auth0 Regular Web Application, use values from:
+
+```text
+Applications > Applications > <your app> > Settings
+```
+
+Copy these fields into `.env`:
+
+```text
+Domain        -> AUTH0_DOMAIN
+Client ID     -> AUTH0_CLIENT_ID
+Client Secret -> AUTH0_CLIENT_SECRET
+```
+
+`AUTH0_DOMAIN` must be only the tenant domain, without protocol or path:
+
+```bash
+AUTH0_DOMAIN=dev-example.us.auth0.com
+```
+
+Do not use `https://`, `/api/v2/`, the Client ID, or the API Identifier in
+`AUTH0_DOMAIN`.
+
+In the same Auth0 application, add these local URLs:
 
 - Allowed Callback URLs: `http://127.0.0.1:5000/callback`
 - Allowed Logout URLs: `http://127.0.0.1:5000/`
 - Allowed Web Origins: `http://127.0.0.1:5000`
 
-Use the Auth0 API `Identifier` as `AUTH0_AUDIENCE`.
+The host and port must exactly match how Flask is running. If port `5000` is
+already in use and you run Flask on `5001`, use these values both in Auth0 and
+in `.env`:
+
+```text
+Allowed Callback URLs: http://127.0.0.1:5001/callback
+Allowed Logout URLs: http://127.0.0.1:5001/
+Allowed Web Origins: http://127.0.0.1:5001
+```
+
+and:
+
+```bash
+AUTH0_CALLBACK_URL=http://127.0.0.1:5001/callback
+AUTH0_LOGOUT_RETURN_URL=http://127.0.0.1:5001/
+```
+
+Be consistent: `localhost` and `127.0.0.1` are different values for Auth0 URL
+matching.
+
+For `AUTH0_AUDIENCE`, go to:
+
+```text
+Applications > APIs
+```
+
+Create or reuse an API for this app, for example:
+
+```text
+Name: Loan API
+Identifier: https://loan-api.local
+Signing Algorithm: RS256
+```
+
+Use the Auth0 API `Identifier` as `AUTH0_AUDIENCE`:
+
+```bash
+AUTH0_AUDIENCE=https://loan-api.local
+```
+
+Do not use the Auth0 Management API unless you intentionally want tokens for
+Auth0 administration. This loan app should normally use its own API identifier.
+
+After changing `.env`, restart Flask. The application reads `.env` on startup.
+You can confirm local Auth0 setup with:
+
+```bash
+curl -i http://127.0.0.1:5000/auth/status
+```
+
+or, if running on port `5001`:
+
+```bash
+curl -i http://127.0.0.1:5001/auth/status
+```
+
+A correctly configured signed-out response has:
+
+```json
+{"authenticated":false,"setupError":null}
+```
 
 ## Run Locally
 
@@ -514,9 +597,58 @@ image push, app deploy, and Auth0 URL update.
 If the website loads but login does not start, check the Auth0 values in `.env`
 or `terraform.tfvars`.
 
+For local Auth0 testing, make sure these three places match exactly:
+
+1. The Flask URL you are using in the browser.
+2. `AUTH0_CALLBACK_URL` and `AUTH0_LOGOUT_RETURN_URL` in `.env`.
+3. Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins in the
+   Auth0 Regular Web Application.
+
+Example for port `5001`:
+
+```text
+Browser URL:                 http://127.0.0.1:5001/
+AUTH0_CALLBACK_URL:          http://127.0.0.1:5001/callback
+AUTH0_LOGOUT_RETURN_URL:     http://127.0.0.1:5001/
+Allowed Callback URLs:       http://127.0.0.1:5001/callback
+Allowed Logout URLs:         http://127.0.0.1:5001/
+Allowed Web Origins:         http://127.0.0.1:5001
+```
+
+If `/auth/status` returns a `setupError`, one or more required Auth0 values are
+missing from `.env`. Check `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`,
+`AUTH0_CLIENT_SECRET`, `AUTH0_AUDIENCE`, and `AUTH0_CALLBACK_URL`, then restart
+Flask.
+
+If `/login` returns `500` and the server log mentions
+`.well-known/openid-configuration` or DNS resolution, `AUTH0_DOMAIN` is wrong.
+Use only the Auth0 tenant domain, for example:
+
+```bash
+AUTH0_DOMAIN=dev-example.us.auth0.com
+```
+
+Do not include `https://` or `/api/v2/` in `AUTH0_DOMAIN`.
+
+If Auth0 shows a redirect/callback error, the callback URL in Auth0 does not
+match `AUTH0_CALLBACK_URL`. Use the same host, port, protocol, and path in both
+places.
+
+If Auth0 shows a 404 or the login page does not load after redirect, verify
+that `AUTH0_CLIENT_ID` came from the Regular Web Application under
+`Applications > Applications`, not from an API or another app.
+
 If login succeeds but API calls return `401`, check that `AUTH0_AUDIENCE`
 matches the Auth0 API Identifier and that the token was issued for that
 audience.
+
+If login succeeds but protected API calls still return `401`, also check that
+`AUTH0_AUDIENCE` is the Identifier from `Applications > APIs > <your API>`.
+For this app, prefer a custom API such as:
+
+```bash
+AUTH0_AUDIENCE=https://loan-api.local
+```
 
 If AWS health check fails, check ECS task logs in CloudWatch under:
 
